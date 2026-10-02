@@ -70,6 +70,9 @@ export interface CaseState {
   events: SimEvent[];
   bankFile: BankFile | null;
   inputs: Record<string, string>;     // founder answers that unblock steps, keyed by step or filing id
+  // Added after the spec (user request, 2 Oct): passport details per person or dependant id, read once and
+  // reused by every filing. Only the last 4 passport characters are kept.
+  identities?: Record<string, IdentityDetails>;
 }
 
 // ---------- Inline cards ----------
@@ -100,6 +103,24 @@ export interface CheckoutCardData {
   payer: { name: string; email: string; company: string | null; country: string | null };
   method: { brand: string; last4: string; expiry: string; label: string };   // a published test card, never a real one
   receipt: string; paidOn: string; status: "succeeded";
+  phoneMasked: string;                   // where the sandbox one-time code "goes", e.g. "+91 ••••• ••271"
+  code: string;                          // the sandbox one-time code the checkout auto-fills
+  authorises: string[];                  // what paying authorises Atlas71 to file on the founder's behalf
+}
+// Added after the spec (user request, 2 Oct): passport details, read once and reused by every filing.
+export interface IdentityDetails {
+  subjectId: string;                     // person or dependant id
+  fullName: string; nationality: string;
+  passportLast4: string;                 // only the last 4 characters are ever stored
+  dateOfBirth: string; passportExpiry: string;   // ISO dates
+  sex?: "F" | "M" | "X";
+  source: "sandbox" | "document";        // sandbox: the persona's fictional saved passport; document: read from an upload
+}
+export interface IdentityCardData {
+  people: (IdentityDetails & { who: string; validMonths: number; ok: boolean; note?: string })[];
+  missing: string[];                     // who still has no passport details
+  usedFor: string[];                     // the filings these details pre-fill
+  sandbox: boolean;
 }
 // Added after the spec (user request, 2 Oct): the "does Abu Dhabi fit your business and life?" comparison.
 export type CompareTopic = "taxes" | "opportunities" | "residency" | "work" | "costs";
@@ -121,7 +142,8 @@ export type Card =
   | { kind: "bank_file"; data: BankFileCardData }
   | { kind: "export"; data: { generatedOn: string } }
   | { kind: "compare"; data: CompareCardData }
-  | { kind: "checkout"; data: CheckoutCardData };
+  | { kind: "checkout"; data: CheckoutCardData }
+  | { kind: "identity"; data: IdentityCardData };
 
 // ---------- Chat + stream protocol ----------
 export type MessagePart =

@@ -12,6 +12,7 @@ import {
   normalizeState,
   provideInput,
   quote,
+  sandboxIdentities,
   startLanding,
   stepInstances,
   stepStatuses,
@@ -33,7 +34,6 @@ function routely(arjunMoves = false): CaseState {
     homeBase: "Bangalore, India",
     stage: "Seed",
     fundingUsd: 600000,
-    parentEntity: "Routely Inc., Delaware C-corp",
     hub71Letter: "none",
     monthlyVolumeUsd: 40000,
     transactionCountries: "UAE, Saudi Arabia, India",
@@ -47,7 +47,9 @@ function routely(arjunMoves = false): CaseState {
     ],
   });
   assert.deepEqual(errors, []);
-  return { ...state, route: "adgm_tsl" };
+  // Meera has OK'd the Hub71 letter and the sandbox passports are on file, so no filing waits on either.
+  const s: CaseState = { ...state, route: "adgm_tsl", inputs: { ...state.inputs, "consent:hub71_letter": "yes" } };
+  return { ...s, identities: Object.fromEntries(sandboxIdentities(s).map((i) => [i.subjectId, i])) };
 }
 
 function byteforge(): CaseState {
@@ -198,10 +200,14 @@ test("the bank account waits for the bank file and the founder's Emirates ID", (
   const meera = s.profile.people.find((p) => p.name === "Meera Iyer")!;
   assert.equal(status()[`emirates_id:${meera.id}`], "done");
 
-  s = applyProfile(s, {
-    fundingSource: "$600k from 8 angels via SAFEs into Routely Inc.",
-    ownership: "Routely Inc. owns 100% of the ADGM company; Meera holds 55%, Arjun 45%.",
-  }).state;
+  const facts = applyProfile(s, {
+    fundingSource: "$600k from 8 angel investors through convertible notes in Routely, a DPIIT-recognised Bangalore company",
+    ownership: "Routely will own 100% of the ADGM company; Meera holds 55% and Arjun 45% of Routely",
+  });
+  assert.deepEqual(facts.errors, []);
+  assert.deepEqual(facts.changed.sort(), ["fundingSource", "ownership"]);
+  s = facts.state;
+  assert.deepEqual(missingFacts(s).bank, [], "both bank gaps are filled by the founder's answer");
   s = { ...s, bankFile: { sections: [], missing: [], checks: [], meta: { live: true }, ready: true, profileKey: "x" } };
   const done = completeBankFile(s);
   assert.deepEqual(done.filed.map((f) => f.step), ["bank_file", "bank_account"]);
@@ -249,7 +255,7 @@ test("sensitive facts become TypeSafe claims, and dropped claims are not saved",
   const args = {
     company: "Routely",
     hub71Letter: "none",
-    fundingSource: "$600k from 8 angels via SAFEs",
+    fundingSource: "$600k from 8 angel investors through convertible notes in Routely",
     people: [
       { name: "Meera Iyer", role: "founder", relocating: true },
       { name: "Arjun Rao", role: "founder", relocating: false },
@@ -260,7 +266,7 @@ test("sensitive facts become TypeSafe claims, and dropped claims are not saved",
   const dropped = claims.filter((c) => c.key === "hub71Letter" || c.key === "relocating:Arjun Rao");
   const { state } = applyProfile(emptyCase(START), withoutClaims(args, dropped));
   assert.equal(state.profile.hub71Letter, null);
-  assert.equal(state.profile.fundingSource, "$600k from 8 angels via SAFEs");
+  assert.equal(state.profile.fundingSource, "$600k from 8 angel investors through convertible notes in Routely");
   assert.deepEqual(missingFacts(state).route, ["description", "homeBase", "relocating:Arjun Rao", "dependants", "hub71Letter"]);
   // an unchanged, already-confirmed fact isn't re-checked
   assert.deepEqual(factClaims(state, { people: [{ name: "Meera", relocating: true }] }), []);

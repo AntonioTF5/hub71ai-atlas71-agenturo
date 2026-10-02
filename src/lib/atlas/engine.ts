@@ -7,6 +7,8 @@ import type {
   Filing,
   FilingsCardData,
   FitResult,
+  IdentityCardData,
+  IdentityDetails,
   Judgment,
   Milestone,
   Person,
@@ -24,7 +26,7 @@ import type {
 } from "./types";
 import { EXCLUDED, FEES, GROUPS, INCLUDED, ROUTES, STEPS, sourceRefs } from "./kb.ts";
 import { addDays, addMonths, aed, fmtDate, fmtDateLong, fmtDay, isIsoDate, maxDate } from "./format.ts";
-import { emptyCase } from "./personas.ts";
+import { emptyCase, SANDBOX_PASSPORTS } from "./personas.ts";
 
 // ---------- small helpers ----------
 
@@ -290,7 +292,9 @@ export function routeCard(state: CaseState, fit: FitResult): RouteCardData {
         ? { label: "Hub71 eligibility letter", state: "met", note: "You have it; Atlas71 attaches it to the ADGM file." }
         : p.hub71Letter === "applied"
           ? { label: "Hub71 eligibility letter", state: "review", note: "You've applied; Atlas71 tracks it." }
-          : { label: "Hub71 eligibility letter", state: "missing", note: "Atlas71 files it [source:hub71-tsl]." },
+          : state.inputs["consent:hub71_letter"] === "yes"
+            ? { label: "Hub71 eligibility letter", state: "missing", note: "You asked Atlas71 to apply; it's submitted once you pay [source:hub71-tsl]." }
+            : { label: "Hub71 eligibility letter", state: "missing", note: "Atlas71 can apply for you, with your OK [source:hub71-tsl]." },
     );
   }
   if (route === "adgm_tsl" || route === "adgm_standard") {
@@ -393,6 +397,105 @@ export function stepInstances(state: CaseState, route: RouteId): StepInstance[] 
   return out;
 }
 
+// ---------- passport details (read once, reused by every filing) ----------
+
+export interface KycSubject {
+  id: string;
+  who: string;
+}
+
+/** Whose passport a filing needs: incorporation needs every founder (shareholders and directors); the
+ * visa steps need each mover and each dependant. `all` is everyone Atlas71 will file for. */
+export function kycSubjects(state: CaseState, scope: "incorporation" | "all" = "all"): KycSubject[] {
+  const p = state.profile;
+  const founders = p.people.filter((x) => x.role === "founder");
+  const people = scope === "incorporation" ? founders : p.people.filter((x) => x.role === "founder" || x.relocating);
+  const out: KycSubject[] = people.map((x) => ({ id: x.id, who: x.name }));
+  if (scope === "all") for (const d of p.dependants) out.push({ id: d.id, who: dependantLabel(p, d) });
+  return out;
+}
+
+function identityMissingFor(state: CaseState, subjects: KycSubject[]): KycSubject[] {
+  return subjects.filter((s) => !state.identities?.[s.id]);
+}
+
+/** Months a passport stays valid after `today`, rounded down. */
+export function monthsValid(today: string, expiry: string): number {
+  const a = new Date(`${today}T00:00:00Z`);
+  const b = new Date(`${expiry}T00:00:00Z`);
+  let m = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth());
+  if (b.getUTCDate() < a.getUTCDate()) m -= 1;
+  return m;
+}
+
+/** The persona's fictional saved passports, matched to the case's people and dependants by first name. */
+export function sandboxIdentities(state: CaseState): IdentityDetails[] {
+  const book = state.persona ? SANDBOX_PASSPORTS[state.persona] : [];
+  const out: IdentityDetails[] = [];
+  for (const s of kycSubjects(state)) {
+    const person = state.profile.people.find((x) => x.id === s.id);
+    const dep = state.profile.dependants.find((x) => x.id === s.id);
+    const name = person?.name ?? dep?.name ?? "";
+    const pass = book.find((b) => firstName(b.fullName).toLowerCase() === firstName(name).toLowerCase());
+    if (pass) {
+      out.push({
+        subjectId: s.id,
+        fullName: pass.fullName,
+        nationality: pass.nationality,
+        passportLast4: pass.passportLast4,
+        dateOfBirth: pass.dateOfBirth,
+        passportExpiry: pass.passportExpiry,
+        sex: pass.sex,
+        source: "sandbox",
+      });
+    }
+  }
+  return out;
+}
+
+/** Store passport details (last 4 characters only) and file whatever they unblock. */
+export function saveIdentities(input: CaseState, entries: IdentityDetails[]): SimResult {
+  const state = clone(input);
+  state.identities = { ...(state.identities ?? {}) };
+  for (const e of entries) state.identities[e.subjectId] = { ...e, passportLast4: e.passportLast4.slice(-4) };
+  return fileReady(state);
+}
+
+/** UAE residence visas need a passport valid for at least this many months (see the passport source in kb.ts). */
+export const MIN_PASSPORT_MONTHS = 6;
+
+export function identityCard(state: CaseState): IdentityCardData {
+  const route = state.route;
+  const subjects = kycSubjects(state);
+  const people: IdentityCardData["people"] = [];
+  for (const s of subjects) {
+    const id = state.identities?.[s.id];
+    if (!id) continue;
+    const validMonths = monthsValid(state.today, id.passportExpiry);
+    const ok = validMonths >= MIN_PASSPORT_MONTHS;
+    people.push({
+      ...id,
+      who: s.who,
+      validMonths,
+      ok,
+      note: ok ? undefined : `Passport must be valid for ${MIN_PASSPORT_MONTHS}+ months for a residence visa; renew it first.`,
+    });
+  }
+  const zone = route === "masdar" ? "Masdar City Free Zone" : "ADGM Registration Authority";
+  const gs = route === "masdar" ? "Masdar City FZ and ICP" : "ADGM Government Services and ICP";
+  return {
+    people,
+    missing: identityMissingFor(state, subjects).map((s) => s.who),
+    usedFor: [
+      `${zone}: shareholders and directors`,
+      `${gs}: entry permits, residence visas and Emirates IDs`,
+      "SEHA: medical fitness tests",
+      "Wio Business: account opening checks",
+    ],
+    sandbox: people.some((x) => x.source === "sandbox"),
+  };
+}
+
 function bankFactsMissing(profile: Profile): boolean {
   return (
     !profile.fundingSource || !profile.ownership || profile.monthlyVolumeUsd == null || !profile.transactionCountries
@@ -401,10 +504,17 @@ function bankFactsMissing(profile: Profile): boolean {
 
 function inputMissing(state: CaseState, inst: StepInstance): boolean {
   switch (inst.step) {
+    case "hub71_letter":
+      // Atlas71 applies on the founder's behalf only with their explicit OK.
+      return state.profile.hub71Letter !== "applied" && state.inputs["consent:hub71_letter"] !== "yes";
+    case "incorporation":
+      return identityMissingFor(state, kycSubjects(state, "incorporation")).length > 0;
+    case "entry_permit":
+      return !state.identities?.[inst.subjectId ?? ""];
     case "medical":
       return !state.inputs[`medical:${inst.subjectId}`];
     case "dependant_visa":
-      return !state.inputs[`documents:${inst.subjectId}`];
+      return !state.inputs[`documents:${inst.subjectId}`] || !state.identities?.[inst.subjectId ?? ""];
     case "bank_file":
       return (
         bankFactsMissing(state.profile) ||
@@ -464,7 +574,11 @@ function stepNote(state: CaseState, route: RouteId, inst: StepInstance, status: 
   const base = STEPS[inst.step].note;
   switch (inst.step) {
     case "hub71_letter":
-      return p.hub71Letter === "applied" ? "You've applied; Atlas71 tracks it." : base;
+      return p.hub71Letter === "applied"
+        ? "You've applied; Atlas71 tracks it."
+        : state.inputs["consent:hub71_letter"] === "yes"
+          ? `You asked Atlas71 to apply. ${base}`
+          : `Needs your OK before Atlas71 applies. ${base}`;
     case "desk": {
       const n = relocating(p).length;
       const desks = deskCount(p);
@@ -740,11 +854,21 @@ function issuedText(state: CaseState, f: Filing): string {
 function needsInputText(state: CaseState, inst: StepInstance): string {
   const who = whoFor(state.profile, inst.step, inst.subjectId);
   switch (inst.step) {
+    case "hub71_letter":
+      return "Approve the Hub71 eligibility letter application";
+    case "incorporation":
+      return `Passport details for ${joinAnd(identityMissingFor(state, kycSubjects(state, "incorporation")).map((x) => x.who))} (shareholders and directors)`;
+    case "entry_permit":
+      return withWho("Passport details needed", who);
     case "medical":
       return withWho("Choose a medical test slot", who);
     case "dependant_visa": {
       const d = state.profile.dependants.find((x) => x.id === inst.subjectId);
-      return `${d?.relation === "child" ? "Legalised birth certificate" : "Legalised marriage certificate"} needed for ${who ?? "the dependant visa"}`;
+      const cert = d?.relation === "child" ? "legalised birth certificate" : "legalised marriage certificate";
+      const needsDoc = !state.inputs[`documents:${inst.subjectId}`];
+      const needsId = !state.identities?.[inst.subjectId ?? ""];
+      const what = needsDoc && needsId ? `Passport details and ${cert}` : needsId ? "Passport details" : cert.charAt(0).toUpperCase() + cert.slice(1);
+      return `${what} needed for ${who ?? "the dependant visa"}`;
     }
     case "bank_file": {
       const missing = missingFacts(state).bank.map((k) => SHORT_FACT[k] ?? k);
@@ -872,6 +996,7 @@ export function medicalSlots(state: CaseState): string[] {
 
 /** Resolve `medical:<personId>` / `documents:<dependantId>`, also accepting a name instead of the id. */
 export function resolveInputKey(state: CaseState, key: string): string | null {
+  if (key.trim() === "consent:hub71_letter") return "consent:hub71_letter";
   const m = /^(medical|documents):(.+)$/.exec(key.trim());
   if (!m) return null;
   const [, kind, ref] = m;
@@ -892,9 +1017,13 @@ export function resolveInputKey(state: CaseState, key: string): string | null {
 
 export function provideInput(input: CaseState, key: string, value: string): SimResult & { key?: string; error?: string } {
   const resolved = resolveInputKey(input, key);
-  if (!resolved) return { state: input, filed: [], events: [], error: `Unknown input key "${key}". Use medical:<personId> or documents:<dependantId>.` };
-  const v = value.trim().slice(0, 200);
+  if (!resolved) {
+    return { state: input, filed: [], events: [], error: `Unknown input key "${key}". Use consent:hub71_letter, medical:<personId> or documents:<dependantId>.` };
+  }
+  let v = value.trim().slice(0, 200);
   if (!v) return { state: input, filed: [], events: [], error: "The value is empty." };
+  // Consent is a yes only when the founder clearly said yes.
+  if (resolved.startsWith("consent:")) v = /^(y|yes|ok|okay|sure|approve|approved|apply|please|go ahead|true)\b/i.test(v) ? "yes" : "no";
   const state = clone(input);
   state.inputs[resolved] = v;
   const r = fileReady(state);
@@ -934,22 +1063,60 @@ export interface WaitingItem {
   options?: string[];
 }
 
+function needsHub71Consent(state: CaseState): boolean {
+  return (
+    state.route === "adgm_tsl" &&
+    state.profile.hub71Letter !== "have" &&
+    state.profile.hub71Letter !== "applied" &&
+    state.inputs["consent:hub71_letter"] !== "yes" &&
+    !state.filings.some((f) => f.step === "hub71_letter")
+  );
+}
+
+const CONSENT_OPTIONS = ["Yes, apply for me", "Not yet"];
+const IDENTITY_OPTIONS = ["Use my saved passports", "I'll upload photos"];
+
 export function waitingItems(state: CaseState): WaitingItem[] {
   const route = state.route;
   if (!isRoute(route)) return [];
+  const missingIds = identityMissingFor(state, kycSubjects(state));
+  const identityItem: WaitingItem | null = missingIds.length
+    ? { key: "identity", label: `Passport details for ${joinAnd(missingIds.map((x) => x.who))}`, options: IDENTITY_OPTIONS }
+    : null;
   if (!state.paid) {
+    const out: WaitingItem[] = [];
+    if (needsHub71Consent(state)) out.push({ key: "consent:hub71_letter", label: "Approve the Hub71 eligibility letter application", options: CONSENT_OPTIONS });
+    if (identityItem) out.push(identityItem);
     const q = quote(state);
-    return q && !priceIsPartial(q) ? [{ key: "pay", label: `Confirm and pay ${aed(q.totalAed)} to start filing` }] : [];
+    if (q && !priceIsPartial(q)) out.push({ key: "pay", label: `Confirm and pay ${aed(q.totalAed)} to start filing` });
+    return out;
   }
   const insts = stepInstances(state, route);
   const status = stepStatuses(state, insts);
   const out: WaitingItem[] = [];
+  let identityAdded = false;
   for (const inst of insts) {
     if (status[inst.id] !== "needs_input") continue;
-    if (inst.step === "medical") {
+    const blockedOnId =
+      (inst.step === "incorporation" || inst.step === "entry_permit" || inst.step === "dependant_visa") &&
+      identityItem &&
+      (inst.step === "incorporation" || !state.identities?.[inst.subjectId ?? ""]);
+    if (blockedOnId && !identityAdded) {
+      out.push(identityItem);
+      identityAdded = true;
+    }
+    if (inst.step === "hub71_letter") {
+      out.push({ key: "consent:hub71_letter", label: needsInputText(state, inst), options: CONSENT_OPTIONS });
+    } else if (inst.step === "medical") {
       out.push({ key: `medical:${inst.subjectId}`, label: needsInputText(state, inst), options: medicalSlots(state) });
-    } else if (inst.step === "dependant_visa") {
-      out.push({ key: `documents:${inst.subjectId}`, label: needsInputText(state, inst), options: ["It's legalised and ready", "Not yet"] });
+    } else if (inst.step === "dependant_visa" && !state.inputs[`documents:${inst.subjectId}`]) {
+      const d = state.profile.dependants.find((x) => x.id === inst.subjectId);
+      const who = whoFor(state.profile, inst.step, inst.subjectId);
+      out.push({
+        key: `documents:${inst.subjectId}`,
+        label: `${d?.relation === "child" ? "Legalised birth certificate" : "Legalised marriage certificate"} needed for ${who ?? "the dependant visa"}`,
+        options: ["It's legalised and ready", "Not yet"],
+      });
     } else if (inst.step === "bank_file") {
       out.push({ key: "bank_file", label: needsInputText(state, inst) });
     }
@@ -1015,7 +1182,40 @@ export function checkoutCard(state: CaseState): CheckoutCardData | null {
     receipt: `A71-RCPT-${state.paid.on.slice(2, 4)}-${digits(`${p.company ?? "company"}|receipt`, 6)}`,
     paidOn: state.paid.on,
     status: "succeeded",
+    phoneMasked: maskedPhone(p.homeBase, `${p.company ?? "company"}|phone`),
+    code: "424242",
+    authorises: authorisations(state, route),
   };
+}
+
+function maskedPhone(homeBase: string | null, seed: string): string {
+  const tail = digits(seed, 3);
+  const country = homeBase?.split(",").pop()?.trim().toLowerCase() ?? "";
+  if (country === "india") return `+91 ••••• ••${tail}`;
+  if (country === "egypt") return `+20 ••• ••• •${tail}`;
+  return `+971 •• ••• •${tail}`;
+}
+
+/** What paying authorises Atlas71 to file for the founder, in plain words. */
+export function authorisations(state: CaseState, route: RouteId): string[] {
+  const p = state.profile;
+  const company = p.company ?? "the company";
+  const movers = relocating(p).map((x) => x.name);
+  const deps = p.dependants.map((d) => dependantLabel(p, d).replace(/ \(.*\)$/, ""));
+  const desks = deskCount(p);
+  const out: string[] = [];
+  if (route === "adgm_tsl" && p.hub71Letter !== "have" && state.inputs["consent:hub71_letter"] === "yes") {
+    out.push("Apply to Hub71 for the eligibility letter");
+  }
+  if (route !== "masdar") out.push(`Reserve ${desks} dedicated ${desks > 1 ? "desks" : "desk"} in the ADGM zone`);
+  out.push(`Incorporate ${company} with the ${route === "masdar" ? "Masdar City Free Zone" : "ADGM Registration Authority"}`);
+  out.push(`Apply for the establishment card${route === "masdar" ? "" : " and e-Channels"}`);
+  out.push("Register the company for corporate tax with the FTA");
+  if (movers.length) out.push(`Entry permits, medical tests and Emirates IDs for ${joinAnd(movers)}`);
+  if (deps.length) out.push(`Dependant visas for ${joinAnd(deps)}, once their certificates are legalised`);
+  out.push("Business account application with Wio Business");
+  out.push("Payments account with Stripe");
+  return out;
 }
 
 // ---------- state hygiene ----------
@@ -1084,6 +1284,26 @@ export function normalizeState(raw: unknown, today: string): CaseState {
     inputs:
       s.inputs && typeof s.inputs === "object"
         ? Object.fromEntries(Object.entries(s.inputs).filter(([, v]) => typeof v === "string").slice(0, 100))
+        : {},
+    identities:
+      s.identities && typeof s.identities === "object"
+        ? Object.fromEntries(
+            Object.entries(s.identities)
+              .filter(
+                ([k, v]) =>
+                  !!v &&
+                  typeof v === "object" &&
+                  v.subjectId === k &&
+                  typeof v.fullName === "string" &&
+                  typeof v.nationality === "string" &&
+                  typeof v.passportLast4 === "string" &&
+                  isIsoDate(v.dateOfBirth) &&
+                  isIsoDate(v.passportExpiry) &&
+                  (v.source === "sandbox" || v.source === "document"),
+              )
+              .slice(0, 30)
+              .map(([k, v]) => [k, { ...v, passportLast4: v.passportLast4.slice(-4) }]),
+          )
         : {},
   };
 }
