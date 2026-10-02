@@ -1060,9 +1060,13 @@ export function entryDate(state: CaseState, answer: string): string | null {
   const iso = /\b(\d{4}-\d{2}-\d{2})\b/.exec(a)?.[1];
   if (iso && isIsoDate(iso)) return iso < state.today ? state.today : iso;
   if (/already|in the uae|here now|i'?m here|today/i.test(a)) return state.today;
+  // "9 Oct" must not match inside "19 Oct": a day-and-month is a match only when no digit comes before it.
+  const lower = a.toLowerCase();
   for (let d = 0; d <= 90; d++) {
     const on = addDays(state.today, d);
-    if (a.toLowerCase().includes(fmtDay(on).toLowerCase()) || a.toLowerCase().endsWith(fmtDate(on).toLowerCase())) return on;
+    const dayMonth = fmtDate(on).toLowerCase();
+    const at = lower.indexOf(dayMonth);
+    if (at >= 0 && !/\d/.test(lower[at - 1] ?? "") && !/\d/.test(lower[at + dayMonth.length] ?? "")) return on;
   }
   return null;
 }

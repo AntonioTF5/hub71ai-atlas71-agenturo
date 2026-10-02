@@ -4,6 +4,7 @@ import type { CaseState } from "../src/lib/atlas/types.ts";
 import {
   advance,
   authorisations,
+  entryDate,
   identityCard,
   monthsValid,
   provideInput,
@@ -109,4 +110,15 @@ test("paying authorises exactly the filings Atlas71 will make", () => {
   assert.ok(list.some((l) => l.includes("Meera Iyer")));
   assert.ok(list.some((l) => l.includes("Rohan and Anya")));
   assert.ok(!authorisations(routely(), "adgm_tsl").some((l) => l.includes("Hub71")), "no consent, no Hub71 application");
+});
+
+test("the signatory's entry date is read from the offered options without mixing up '4 Oct' and '14 Oct'", () => {
+  const s = routely();
+  assert.equal(entryDate(s, "Landing Fri 9 Oct"), "2026-10-09");
+  assert.equal(entryDate(s, "Landing Wed 14 Oct"), "2026-10-14");
+  assert.equal(entryDate(s, "Landing Mon 19 Oct"), "2026-10-19");
+  assert.equal(entryDate(s, "Sun 4 Oct"), "2026-10-04");
+  assert.equal(entryDate(s, "Already in the UAE"), s.today);
+  assert.equal(entryDate(s, "2026-11-03"), "2026-11-03");
+  assert.equal(entryDate(s, "sometime soon"), null);
 });
