@@ -95,7 +95,7 @@ function facts(
                 : "Not yet · Atlas71 files it",
     });
   }
-  if (p.fundingSource || p.fundingUsd != null) {
+  if (p.fundingSource || (p.fundingUsd ?? 0) > 0) {
     out.push({ label: "Funding", value: p.fundingSource ?? usd(p.fundingUsd as number) });
   }
   if (p.parentEntity) out.push({ label: "Parent", value: p.parentEntity });
