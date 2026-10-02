@@ -835,9 +835,16 @@ export function advance(
   return { state, filed, events, from, to: state.today };
 }
 
+/** The next working day after `iso` (the UAE weekend is Saturday and Sunday). */
+function nextWorkday(iso: string): string {
+  let d = addDays(iso, 1);
+  while ([0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay())) d = addDays(d, 1);
+  return d;
+}
+
 export function medicalSlots(state: CaseState): string[] {
-  const d1 = addDays(state.today, 1);
-  const d2 = addDays(state.today, 2);
+  const d1 = nextWorkday(state.today);
+  const d2 = nextWorkday(d1);
   return [`${fmtDay(d1)}, 09:00 · SEHA Al Bateen`, `${fmtDay(d1)}, 14:30 · SEHA Mussafah`, `${fmtDay(d2)}, 10:00 · SEHA Khalifa City`];
 }
 

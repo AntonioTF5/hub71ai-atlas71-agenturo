@@ -257,7 +257,7 @@ async function draftBankFile(state: CaseState): Promise<{ title: string; body: s
         messages: [
           {
             role: "system",
-            content: `You draft the business profile that a UAE bank (Wio Business) reads when a newly licensed company opens an account. Use only the confirmed facts in the JSON you're given. Wherever a fact the bank needs is missing or null, write exactly ${PLACEHOLDER} in its place. Never guess or infer the source of funds, ownership percentages or transaction volumes. Write these five sections, in order: ${BANK_SECTIONS.join("; ")}. Each body is 1–3 plain sentences: no markdown, no bullet points, no marketing language.`,
+            content: `You draft the business profile that a UAE bank (Wio Business) reads when a newly licensed company opens an account. Use only the confirmed facts in the JSON you're given. Where fundingSource, ownership, expectedMonthlyVolumeUsd, transactionCountries or signatory is null, write exactly ${PLACEHOLDER} in its place; don't add placeholders for anything else, and don't ask for extra documents or details. Never guess or infer the source of funds, ownership percentages or transaction volumes. Write these five sections, in order: ${BANK_SECTIONS.join("; ")}. Each body is 1–2 plain sentences, under 50 words: no markdown, no bullet points, no marketing language.`,
           },
           { role: "user", content: JSON.stringify(bankFacts(state)) },
         ],
@@ -329,16 +329,24 @@ const EXECUTORS: Record<string, Executor> = {
     const { state, changed, errors } = applyProfile(ctx.state, withoutClaims(args, dropped));
     ctx.state = state;
     if (changed.length) ctx.emit({ t: "state", state });
-    const missing = missingFacts(state);
+    // The founder just filled bank-file gaps: re-check it now instead of waiting for another model turn.
+    const bankFacts = ["fundingSource", "ownership", "monthlyVolumeUsd", "transactionCountries"];
+    const recheck =
+      changed.some((c) => bankFacts.includes(c)) &&
+      !!state.bankFile &&
+      !state.filings.some((f) => f.step === "bank_file") &&
+      state.filings.some((f) => f.step === "incorporation" && f.status === "done");
+    const bankFile = recheck ? JSON.parse(await EXECUTORS.prepare_bank_file({}, ctx)) : undefined;
+    const missing = missingFacts(ctx.state);
     return ok({
-      saved: changed,
+      bankFileRechecked: bankFile,
       notSaved: dropped.length
         ? dropped.map((c) => `${c.label}: the founder hasn't said this, so it wasn't saved. Ask them.`)
         : undefined,
       errors: errors.length ? errors : undefined,
       missingBeforeRoute: missing.route.map(describeFact),
       missingForBankFile: missing.bank.map(describeFact),
-      next: nextHint(state),
+      next: bankFile ? "The bank file was re-checked (see bankFileRechecked): tell the founder the result." : nextHint(ctx.state),
     });
   },
 

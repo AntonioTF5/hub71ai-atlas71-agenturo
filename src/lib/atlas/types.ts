@@ -91,6 +91,16 @@ export interface PriceCardData { routeName: string; totalAed: number; lines: Pri
 export interface FilingsCardData { items: { provider: string; title: string; who?: string; ref: string; filedOn: string; etaOn: string; status: Filing["status"] }[] }
 export interface UpdatesCardData { from: string; to: string; events: SimEvent[]; waitingOn: string[] }
 export interface BankFileCardData { bank: string; sections: { title: string; body: string }[]; missing: string[]; checks: Judgment[]; checksMeta: ChecksMeta; ready: boolean }
+// Added after the spec (user request, 2 Oct): the "does Abu Dhabi fit your business and life?" comparison.
+export type CompareTopic = "taxes" | "opportunities" | "residency" | "work" | "costs";
+export interface CompareRow { topic: CompareTopic; label: string; abuDhabi: string; home: string; edge: "abu_dhabi" | "home" | "even"; matters?: boolean; sourceIds: string[] }
+export interface CompareCardData {
+  homeBase: string; homeLabel: string;   // "Bangalore, India" · "Bangalore"
+  verdict: string;                       // one line, written by code from the rows and checks
+  rows: CompareRow[];
+  firstYear: { label: string; abuDhabiAed: [number, number]; homeAed: [number, number] | null; note?: string }[];
+  checks: Judgment[]; checksMeta: ChecksMeta; sources: SourceRef[];
+}
 
 export type Card =
   | { kind: "route"; data: RouteCardData }
@@ -99,7 +109,8 @@ export type Card =
   | { kind: "filings"; data: FilingsCardData }
   | { kind: "updates"; data: UpdatesCardData }
   | { kind: "bank_file"; data: BankFileCardData }
-  | { kind: "export"; data: { generatedOn: string } };
+  | { kind: "export"; data: { generatedOn: string } }
+  | { kind: "compare"; data: CompareCardData };
 
 // ---------- Chat + stream protocol ----------
 export type MessagePart =
