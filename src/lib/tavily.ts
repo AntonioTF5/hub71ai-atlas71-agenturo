@@ -81,7 +81,14 @@ export interface SearchResult {
 
 export async function tavilySearch(
   query: string,
-  opts: { maxResults?: number; depth?: "basic" | "advanced"; topic?: "general" | "news"; includeDomains?: string[] } = {},
+  opts: {
+    maxResults?: number;
+    depth?: "basic" | "advanced";
+    topic?: "general" | "news";
+    includeDomains?: string[];
+    /** At most 15 s; the agent passes less when its reply is short on time. */
+    timeoutMs?: number;
+  } = {},
 ): Promise<SearchResult> {
   const max = Math.min(10, Math.max(1, opts.maxResults ?? 5));
   const r = await post<{
@@ -98,7 +105,7 @@ export async function tavilySearch(
       include_raw_content: false,
       ...(opts.includeDomains?.length ? { include_domains: opts.includeDomains.slice(0, 20) } : {}),
     },
-    15_000,
+    Math.min(15_000, opts.timeoutMs ?? 15_000),
   );
   const results: SearchHit[] = (Array.isArray(r.results) ? r.results : [])
     .filter((h) => isHttpUrl(h.url))
@@ -119,10 +126,17 @@ export interface ExtractResult {
   truncated: boolean;
 }
 
-/** Page content as markdown. With `query`, Tavily returns the chunks most relevant to it. Throws on failure. */
-export async function tavilyExtract(url: string, opts: { query?: string; maxChars?: number } = {}): Promise<ExtractResult> {
+/**
+ * Page content as markdown. With `query`, Tavily returns the chunks most relevant to it. `timeoutMs` (at most
+ * 25 s) bounds the whole call; Tavily's own fetch gets a little less. Throws on failure.
+ */
+export async function tavilyExtract(
+  url: string,
+  opts: { query?: string; maxChars?: number; timeoutMs?: number } = {},
+): Promise<ExtractResult> {
   if (!isHttpUrl(url)) throw new TavilyError("bad_request");
   const maxChars = opts.maxChars ?? 12_000;
+  const timeoutMs = Math.min(25_000, opts.timeoutMs ?? 25_000);
   const r = await post<{
     results?: { url?: unknown; raw_content?: unknown }[];
     failed_results?: { url?: unknown; error?: unknown }[];
@@ -132,10 +146,10 @@ export async function tavilyExtract(url: string, opts: { query?: string; maxChar
       urls: [url],
       extract_depth: "basic",
       format: "markdown",
-      timeout: 20,
+      timeout: Math.min(20, Math.max(3, Math.floor(timeoutMs / 1000) - 2)),
       ...(opts.query?.trim() ? { query: opts.query.trim().slice(0, 300), chunks_per_source: 5 } : {}),
     },
-    25_000,
+    timeoutMs,
   );
   // Partial failures come back as HTTP 200, so check both arrays.
   const hit = (Array.isArray(r.results) ? r.results : []).find((x) => typeof x.raw_content === "string" && x.raw_content.trim());

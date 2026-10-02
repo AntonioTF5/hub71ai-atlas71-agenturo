@@ -150,13 +150,13 @@ export type MessagePart =
   | { type: "text"; text: string }
   | { type: "card"; card: Card }
   | { type: "choices"; options: string[] }
-  | { type: "activity"; text: string; done: boolean };
+  | { type: "activity"; text: string; done: boolean; failed?: boolean }; // failed: done, but it didn't work
 
 export interface ChatMessage { id: string; role: "user" | "assistant"; parts: MessagePart[]; error?: string }
 
 export type StreamEvent =                  // one JSON object per line from POST /api/agent
   | { t: "text"; d: string }
-  | { t: "activity"; d: string; done?: boolean }
+  | { t: "activity"; d: string; done?: boolean; failed?: boolean }
   | { t: "card"; card: Card }
   | { t: "choices"; options: string[] }
   | { t: "state"; state: CaseState }

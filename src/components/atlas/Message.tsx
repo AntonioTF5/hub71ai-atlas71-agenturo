@@ -46,10 +46,15 @@ export function Thinking() {
   );
 }
 
-function ActivityRow({ text, done, running }: { text: string; done: boolean; running: boolean }) {
+function ActivityRow({ text, done, failed, running }: { text: string; done: boolean; failed?: boolean; running: boolean }) {
   return (
     <div className="flex items-start gap-2.5 text-[13.5px] leading-[18px] text-muted">
-      {done ? (
+      {done && failed ? (
+        // Finished, but it didn't work (a page that couldn't be read, a check that didn't answer): no tick.
+        <span className="atlas-fade grid size-[18px] shrink-0 place-items-center rounded-full bg-gold-soft text-gold-ink">
+          <IconAlert size={12} strokeWidth={2.6} />
+        </span>
+      ) : done ? (
         <span className="atlas-fade grid size-[18px] shrink-0 place-items-center rounded-full bg-good-soft text-good">
           <IconCheck size={11} strokeWidth={3.2} />
         </span>
@@ -219,7 +224,7 @@ function AssistantMessage({
       return (
         <div key={i} className="space-y-1">
           {b.items.map((a, j) => (
-            <ActivityRow key={j} text={a.text} done={a.done} running={pending && !a.done} />
+            <ActivityRow key={j} text={a.text} done={a.done} failed={a.failed} running={pending && !a.done} />
           ))}
         </div>
       );

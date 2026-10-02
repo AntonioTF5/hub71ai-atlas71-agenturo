@@ -8,6 +8,7 @@ import {
   monthsValid,
   provideInput,
   sandboxIdentities,
+  saysYes,
   signatoryOf,
   saveIdentities,
   startLanding,
@@ -55,9 +56,23 @@ test("the Hub71 letter waits for the founder's OK, before and after payment", ()
   assert.equal(no.state.inputs["consent:hub71_letter"], "no");
   assert.equal(no.filed.length, 0);
 
+  for (const refusal of ["Please don't apply yet", "OK, but not yet", "Apply later"]) {
+    const r = provideInput(paid.state, "consent:hub71_letter", refusal);
+    assert.equal(r.state.inputs["consent:hub71_letter"], "no", refusal);
+    assert.equal(r.filed.length, 0, refusal);
+  }
+
   const yes = provideInput(paid.state, "consent:hub71_letter", "Yes, apply for me");
   assert.equal(yes.state.inputs["consent:hub71_letter"], "yes");
   assert.deepEqual(yes.filed.map((f) => f.step), ["hub71_letter"]);
+});
+
+test("only an explicit, unhedged yes counts as consent", () => {
+  for (const yes of ["Yes, apply for me", "yes", "Yeah go ahead", "OK", "Sure, please do", "Approved"]) assert.ok(saysYes(yes), yes);
+  for (const no of ["Not yet", "Please don't apply yet", "OK, but not yet", "Apply later", "Yes, but wait for my co-founder", "Hold on", "y", "true", ""]) {
+    assert.ok(!saysYes(no), no);
+  }
+  assert.ok(saysYes("Show me the plan first\n\nYes, apply for me"), "the newest paragraph decides");
 });
 
 test("incorporation waits for every founder's passport, and the sandbox fills them in one go", () => {

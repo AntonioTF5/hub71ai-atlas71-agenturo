@@ -62,11 +62,14 @@ export async function checkScope(
 /** The decline: one sentence saying no, one saying what Atlas71 does, then two taps back to the job. */
 export function declineEvents(state: CaseState): StreamEvent[] {
   const company = state.profile.company;
-  const text = `That one is outside what I do. I help founders land a company in Abu Dhabi${
-    company ? `, and ${company} is the one on my desk` : ""
-  }. Shall we pick up where we left off?`;
+  const text = company
+    ? `That one is outside what I do. I help founders land a company in Abu Dhabi, and ${company} is the one on my desk. Shall we pick up where we left off?`
+    : "That one is outside what I do. I help founders decide on Abu Dhabi and then land their company there. Shall we start with your company?";
   return [
     { t: "text", d: text },
-    { t: "choices", options: ["Pick up where we left off", "What can you help with?"] },
+    {
+      t: "choices",
+      options: company ? ["Pick up where we left off", "What can you help with?"] : ["Tell Atlas71 about my company", "How does it work?"],
+    },
   ];
 }

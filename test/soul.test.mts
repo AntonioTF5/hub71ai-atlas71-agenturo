@@ -58,6 +58,7 @@ test("the decline names the company, says what Atlas71 does and offers two taps 
   const s = emptyCase("2026-10-02", "routely");
   const bare = declineEvents(s);
   assert.equal(bare[0].t, "text");
+  assert.deepEqual((bare[1] as { options: string[] }).options, ["Tell Atlas71 about my company", "How does it work?"], "no company yet: start with the company");
   const withCompany = declineEvents({ ...s, profile: { ...s.profile, company: "Routely" } });
   assert.ok((withCompany[0] as { d: string }).d.includes("Routely"));
   assert.ok((withCompany[0] as { d: string }).d.includes("land a company in Abu Dhabi"));

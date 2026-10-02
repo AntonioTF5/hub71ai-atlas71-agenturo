@@ -1108,7 +1108,7 @@ export function provideInput(input: CaseState, key: string, value: string): SimR
     v = on;
   }
   // Consent is a yes only when the founder clearly said yes.
-  if (resolved.startsWith("consent:")) v = /^(y|yes|ok|okay|sure|approve|approved|apply|please|go ahead|true)\b/i.test(v) ? "yes" : "no";
+  if (resolved.startsWith("consent:")) v = saysYes(v) ? "yes" : "no";
   const state = clone(input);
   state.inputs[resolved] = v;
   const r = fileReady(state);
@@ -1159,6 +1159,20 @@ function needsHub71Consent(state: CaseState): boolean {
 }
 
 const CONSENT_OPTIONS = ["Yes, apply for me", "Not yet"];
+
+/**
+ * An explicit yes in the founder's words: the consent button, or a reply that starts with yes and doesn't
+ * hedge ("OK, but not yet" and "Please don't apply yet" are no). Of a message, only the last paragraph counts.
+ */
+export function saysYes(text: string): boolean {
+  const t = (text.split(/\n{2,}/).filter((s) => s.trim()).pop() ?? "").trim().replace(/\s+/g, " ");
+  if (t.toLowerCase() === CONSENT_OPTIONS[0].toLowerCase()) return true;
+  return (
+    /^(yes|yeah|yep|ok(ay)?|sure|go ahead|approved?)\b/i.test(t) &&
+    !/\b(not|no|don['’]?t|can['’]?t|won['’]?t|later|wait|hold|first|before)\b/i.test(t)
+  );
+}
+
 const IDENTITY_OPTIONS = ["Use my saved passports", "I'll upload photos"];
 
 export function waitingItems(state: CaseState): WaitingItem[] {

@@ -1,6 +1,8 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { after } from "next/server";
 import { ATTACHMENT_MIME, MAX_UPLOAD_BYTES, UPLOAD_PREFIX } from "@/lib/atlas/attachments";
 import { allow, clientIp } from "@/lib/ratelimit";
+import { sweepStaleUploads } from "@/lib/uploads";
 
 // Client uploads for chat attachments: @vercel/blob/client upload() trades a small JSON here for a token
 // scoped to one file under atlas71/, then sends the bytes straight to Vercel Blob, so a 20 MB photo or PDF
@@ -20,8 +22,15 @@ export async function POST(req: Request) {
     return Response.json({ error: "Expected a JSON body." }, { status: 400 });
   }
   // Only token requests count: Vercel Blob's upload-completed callback comes from Vercel's own servers.
-  if (body?.type === "blob.generate-client-token" && !allow(`upload:${clientIp(req)}`, UPLOADS_PER_HOUR)) {
-    return Response.json({ error: "Too many uploads from this network. Try again later." }, { status: 429 });
+  if (body?.type === "blob.generate-client-token") {
+    // Tokens are for Atlas71's own page; another site's page can't spend them (scripts can, so the sweep
+    // below is what bounds how long any upload stays public).
+    const site = req.headers.get("sec-fetch-site");
+    if (site && site !== "same-origin") return Response.json({ error: "Uploads come from Atlas71 only." }, { status: 403 });
+    if (!allow(`upload:${clientIp(req)}`, UPLOADS_PER_HOUR)) {
+      return Response.json({ error: "Too many uploads from this network. Try again later." }, { status: 429 });
+    }
+    after(sweepStaleUploads);
   }
 
   try {

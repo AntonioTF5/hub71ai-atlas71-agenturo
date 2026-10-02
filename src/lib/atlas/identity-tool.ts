@@ -8,6 +8,8 @@ import { isIsoDate } from "./format.ts";
 interface Ctx {
   state: CaseState;
   emit: (e: StreamEvent) => void;
+  /** Files attached to the founder's newest message in this request. */
+  attachments?: number;
 }
 
 export const SAVE_IDENTITY_TOOL: OpenAI.Chat.ChatCompletionFunctionTool = {
@@ -59,6 +61,10 @@ export function executeSaveIdentity(args: Record<string, unknown>, ctx: Ctx): st
     entries = sandboxIdentities(ctx.state);
     if (!entries.length) return fail("There are no saved passports for this founder. Ask them to attach passport photos instead.");
   } else if (args.source === "document") {
+    // Passports are read from files attached to this very message; without any, the fields would be made up.
+    if (!ctx.attachments) {
+      return fail("No file is attached to the founder's latest message, so there's no passport to read. Ask them to attach passport photos or PDFs.");
+    }
     const people = Array.isArray(args.people) ? args.people.slice(0, 12) : [];
     if (!people.length) return fail("Pass the passports you read in people[].");
     for (const raw of people) {
