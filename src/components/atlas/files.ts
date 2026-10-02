@@ -35,7 +35,7 @@ export interface PendingFile {
   preview: string | null;
   /** The request part, once ready. */
   attachment?: Attachment;
-  /** The ready state in words: "Uploaded", "Read in your browser · 14 pages". */
+  /** The ready state in words: "Uploaded · 12.4 MB", "Read in your browser · 14 pages". */
   note?: string;
   /** Said on hover when part of the file was left out. */
   hint?: string;
@@ -319,7 +319,7 @@ async function prepareImage(file: File, name: string, ctx: PrepareContext): Prom
       update({ stage: "uploading", progress: 0, activity: undefined });
       try {
         const url = await uploadToBlob(sentName, blob, mime, { signal, onProgress: (progress) => update({ progress }) });
-        update({ stage: "ready", attachment: { name: sentName, mime, size: file.size, url }, note: "Uploaded" });
+        update({ stage: "ready", attachment: { name: sentName, mime, size: file.size, url }, note: `Uploaded · ${formatBytes(blob.size)}` });
         return;
       } catch (err) {
         signal.throwIfAborted();
@@ -335,13 +335,14 @@ async function prepareImage(file: File, name: string, ctx: PrepareContext): Prom
     signal.throwIfAborted();
     const inlineMime = dataUrl.slice(5, dataUrl.indexOf(";"));
     const inlineName = renameTo(name, inlineMime);
+    const bytes = dataUrlBytes(dataUrl);
     update({
       stage: "ready",
       name: inlineName,
       mime: inlineMime,
-      bytes: dataUrlBytes(dataUrl),
+      bytes,
       attachment: { name: inlineName, mime: inlineMime, size: file.size, dataUrl },
-      note: "Ready",
+      note: `Ready · ${formatBytes(bytes)}`,
     });
   } finally {
     canvas.width = canvas.height = 0;
@@ -374,7 +375,7 @@ async function preparePdf(file: File, name: string, ctx: PrepareContext): Promis
     update({ stage: "uploading", progress: 0, bytes: file.size });
     try {
       const url = await uploadToBlob(name, file, "application/pdf", { signal, onProgress: (progress) => update({ progress }) });
-      update({ stage: "ready", attachment: { name, mime: "application/pdf", size: file.size, url }, note: "Uploaded" });
+      update({ stage: "ready", attachment: { name, mime: "application/pdf", size: file.size, url }, note: `Uploaded · ${formatBytes(file.size)}` });
       return;
     } catch (err) {
       signal.throwIfAborted();

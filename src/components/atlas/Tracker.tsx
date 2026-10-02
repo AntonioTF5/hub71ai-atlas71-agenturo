@@ -92,7 +92,9 @@ function facts(
               ? "Have it"
               : p.hub71Letter === "applied"
                 ? "Applied"
-                : "Not yet · Atlas71 files it",
+                : inputs["consent:hub71_letter"] === "yes"
+                  ? "Not yet · you asked Atlas71 to apply"
+                  : "Not yet · asks your OK first",
     });
   }
   if (p.fundingSource || (p.fundingUsd ?? 0) > 0) {

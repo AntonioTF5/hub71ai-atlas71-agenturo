@@ -5,7 +5,7 @@
 // Each attached file gets ready on its own (compress, upload or read inline) with its progress in a
 // pill; removing a pill cancels its upload, and Send waits until every file is ready.
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type Ref } from "react";
-import { ATTACHMENT_ACCEPT, MAX_ATTACHMENTS, type Attachment } from "@/lib/atlas/attachments";
+import { ATTACHMENT_ACCEPT, MAX_ATTACHMENTS, MAX_UPLOAD_BYTES, type Attachment } from "@/lib/atlas/attachments";
 import { FileBadge } from "./file-badge";
 import { FileError, checkFile, formatBytes, makeInlineRoom, newFileId, prepareFile, type PendingFile } from "./files";
 import { IconArrowUp, IconCheck, IconMic, IconPaperclip, IconX, Spinner } from "./icons";
@@ -31,7 +31,7 @@ function FilePill({ file, onRemove }: { file: PendingFile; onRemove: () => void 
   const status = uploading
     ? `Uploading ${percent}% · ${formatBytes(file.bytes)}`
     : ready
-      ? `${file.note ?? "Ready"}${file.note === "Uploaded" || file.note === "Ready" ? ` · ${formatBytes(file.bytes)}` : ""}`
+      ? (file.note ?? "Ready")
       : (file.activity ?? "Preparing…");
   return (
     <li className="atlas-fade relative w-[272px] shrink-0 sm:w-[320px]" title={file.hint}>
@@ -413,7 +413,7 @@ export function Composer({
             onClick={() => pickerRef.current?.click()}
             onMouseDown={(e) => e.preventDefault()}
             aria-label="Attach a PDF or image"
-            title="Attach a PDF or image"
+            title={`PDFs or photos: up to ${MAX_ATTACHMENTS} files, ${formatBytes(MAX_UPLOAD_BYTES)} each`}
             className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-sunken hover:text-ink"
           >
             <IconPaperclip size={20} />
