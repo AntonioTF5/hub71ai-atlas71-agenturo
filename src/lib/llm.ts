@@ -27,7 +27,7 @@ export const AGENT_MODEL = process.env.ATLAS_AGENT_MODEL ?? "openai/gpt-6.1-sol"
  * effort and no temperature; Claude 5.x always reasons, so keep it minimal. Reasoning tokens count
  * against max_tokens, so callers keep max_tokens generous.
  */
-export function modelParams(model: string, effort: "minimal" | "low" | "medium" = "low"): Record<string, unknown> {
+export function modelParams(model: string, effort: "none" | "minimal" | "low" | "medium" = "none"): Record<string, unknown> {
   if (model.startsWith("openai/")) return { reasoning: { effort } };
   if (model.startsWith("anthropic/")) return { temperature: 0.3, reasoning: { effort: "minimal" } };
   return { temperature: 0.3 };
