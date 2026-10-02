@@ -55,10 +55,11 @@ function usd(n: number): string {
   return `$${Math.round(n)}`;
 }
 
-function facts(p: Profile): { label: string; value: ReactNode }[] {
+function facts(p: Profile, inputs: Record<string, string> = {}): { label: string; value: ReactNode }[] {
   const out: { label: string; value: ReactNode }[] = [];
   const movers = p.people.filter((x) => x.relocating);
-  const staying = p.people.filter((x) => !x.relocating);
+  const unsure = p.people.filter((x) => inputs[`relocating:${x.id}`] === "unconfirmed");
+  const staying = p.people.filter((x) => !x.relocating && !unsure.includes(x));
   if (p.homeBase || p.stage) out.push({ label: "From", value: [p.homeBase, p.stage].filter(Boolean).join(" · ") });
   if (movers.length) {
     out.push({
@@ -73,6 +74,7 @@ function facts(p: Profile): { label: string; value: ReactNode }[] {
     });
   }
   if (staying.length) out.push({ label: "Staying", value: staying.map((s) => s.name).join(", ") });
+  if (unsure.length) out.push({ label: "Not sure yet", value: unsure.map((s) => s.name).join(", ") });
   if (p.hub71Letter) {
     out.push({
       label: "Hub71 letter",
@@ -112,7 +114,7 @@ export function TrackerPanel({
   headingId?: string;
 }) {
   const p = state.profile;
-  const factList = facts(p);
+  const factList = facts(p, state.inputs);
   const etas = new Map(state.filings.map((f) => [f.id, f.etaOn]));
   const steps = plan?.groups.flatMap((g) => g.steps) ?? [];
   const done = steps.filter((s) => s.status === "done").length;
