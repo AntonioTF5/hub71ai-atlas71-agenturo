@@ -19,13 +19,16 @@ async function checkOpenRouter() {
     "Content-Type": "application/json",
   };
   try {
-    // Free endpoint that returns info about the calling key. `label` is dropped: it can contain part of the key.
+    // Free endpoint that returns info about the calling key; only non-identifying fields are passed on.
     const keyRes = await fetch("https://openrouter.ai/api/v1/key", { headers, cache: "no-store" });
     if (!keyRes.ok) return { ok: false, error: `${keyRes.status} ${await keyRes.text()}` };
-    const keyInfo = (await keyRes.json()).data ?? {};
-    delete keyInfo.label;
+    const { is_management_key, is_free_tier, limit_remaining, usage } = (await keyRes.json()).data ?? {};
+    const keyInfo = { is_management_key, is_free_tier, limit_remaining, usage };
+    if (is_management_key) {
+      return { ok: false, keyInfo, error: "This is a management key; completions need a regular API key." };
+    }
 
-    // A key can pass /key yet be refused for completions (e.g. a provisioning key), so try a 1-token call.
+    // A key can pass /key yet still be refused for completions, so try a 1-token call.
     const chatRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers,
