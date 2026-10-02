@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { DEFAULT_MODEL, llm, NO_REASONING } from "@/lib/llm";
+import { DEFAULT_MODEL, llm, LIGHT_REASONING } from "@/lib/llm";
 import type { AgentAction, AgentRequest, StreamEvent } from "@/lib/atlas/types";
 import { normalizeState } from "@/lib/atlas/engine";
 import { localToday } from "@/lib/atlas/format";
@@ -163,9 +163,9 @@ async function runAgent(
         tools: TOOLS,
         tool_choice: "auto",
         temperature: 0.3,
-        max_tokens: 1500,
+        max_tokens: 4000,
         messages,
-        ...NO_REASONING,
+        ...LIGHT_REASONING,
       },
       { signal, timeout: 30_000, maxRetries: 1 },
     );
@@ -228,11 +228,11 @@ async function runAgent(
       {
         model: DEFAULT_MODEL,
         temperature: 0.3,
-        max_tokens: 600,
+        max_tokens: 3000,
         tools: TOOLS,
         tool_choice: { type: "function", function: { name: "offer_choices" } },
         messages,
-        ...NO_REASONING,
+        ...LIGHT_REASONING,
       },
       { signal, timeout: 20_000, maxRetries: 1 },
     );

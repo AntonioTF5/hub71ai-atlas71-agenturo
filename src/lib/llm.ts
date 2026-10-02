@@ -18,6 +18,7 @@ export function llm() {
 // Swap per call or via env. Browse ids at https://openrouter.ai/models
 export const DEFAULT_MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-5.5";
 
-// OpenRouter's unified reasoning switch. The agent needs quick tool calls, not hidden thinking, and
-// reasoning tokens would otherwise count against max_tokens. Spread into a create() call.
-export const NO_REASONING = { reasoning: { effort: "none" } } as Record<string, unknown>;
+// OpenRouter's unified reasoning switch. Sonnet 5.5 always reasons ("cannot be disabled"), so keep it
+// minimal: the agent needs quick tool calls, and reasoning tokens count against max_tokens.
+// Spread into a create() call and leave max_tokens generous.
+export const LIGHT_REASONING = { reasoning: { effort: "minimal" } } as Record<string, unknown>;
