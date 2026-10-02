@@ -15,9 +15,6 @@ export function llm() {
   return client;
 }
 
-// Swap per call or via env. Browse ids at https://openrouter.ai/models
-export const DEFAULT_MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-5.5";
-
 // The Atlas71 agent and its drafting run on an OpenAI mid-tier model (GPT-6.1 Sol) through OpenRouter.
 // Override with ATLAS_AGENT_MODEL. TypeSafe (typesafe.ts) still answers the eligibility and bank checks.
 export const AGENT_MODEL = process.env.ATLAS_AGENT_MODEL ?? "openai/gpt-6.1-sol";
