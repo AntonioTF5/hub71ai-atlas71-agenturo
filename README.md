@@ -40,10 +40,11 @@ The agent (`src/lib/atlas/tools.ts`) is a bounded tool-calling loop: 8 turns, a 
 - `compare_abu_dhabi`, `check_route`, `show_plan`, `show_price`, `choose_route`: the decision and planning cards.
 - `start_landing`, `advance_time`, `provide_input`: payment (refused until every pre-payment detail is in), the filing simulator, and the founder's answers (consent, entry date, family certificates, medical slot).
 - `save_identity`: passport details from photos or the saved sandbox passports; only the last 4 characters are kept.
+- `use_investor_docs`: the demo founder's uploaded investor documents (SAFE and cap table) fill in the source of funds and ownership in one tap, shown on a documents card.
 - `prepare_bank_file`: drafts from confirmed facts only, then runs the TypeSafe bank checks.
 - `web_search`, `fetch_url`: live web through Tavily, with official-source preference and untrusted-content handling.
 - `offer_choices`: tappable answers, so the conversation is mostly taps on mobile.
-- `export_pack`: downloads the landing pack (Markdown) and the case file (JSON).
+- `export_pack`: downloads the whole landing pack as one ZIP: the summary (Markdown), the case file (JSON) and a simulated PDF of every document issued so far (certificate of incorporation, commercial licence, establishment card, tax registration, visas and Emirates IDs, bank account, Stripe, receipt, investor documents). Every page is stamped as a sandbox simulation.
 - **Scope-locked by a soul file.** `SOUL.md` defines the agent's identity, voice, boundaries, scenarios and examples (an 8-chapter soul, built into the system prompt by `npm run soul`). A TypeSafe scope check also stops off-topic requests (crypto prices, trivia, role-play) before they reach the model or its web tools, so the agent stays on the relocation job.
 
 ## Why it's different
@@ -85,10 +86,11 @@ This is a sandbox. Integrations, filings, payments and the bank are simulated, t
 1. Open the live URL and click **Routely** (B2B SaaS, Bangalore-based, $600k raised). Choose the sandbox account.
 2. Answer **Just me for now**, watch the *Abu Dhabi vs Bangalore* card, then **No** to the Hub71 letter.
 3. See the recommended route, then **Yes, apply for me** (consent) and **What will it cost?**. The price card lists what's still needed, and Confirm & pay stays locked until it's all in.
-4. **Use my saved passports**, pick a landing date, answer the family certificates (**Not yet** is fine), and type where the money came from and who owns the company (e.g. "$600k from 8 angels via convertible notes; I hold 55%, Arjun 45%").
+4. **Use my saved passports**, pick a landing date, answer the family certificates (**Not yet** is fine), then **Use my uploaded investor docs**: Meera's SAFE and cap table give the source of funds and ownership (a16z, $600k seed on a post-money SAFE for 10%).
 5. On the final price card every item is ticked: **Confirm & pay** and watch the checkout.
 6. Press **+2 weeks** twice and **Next event**: licence, establishment card, tax registration, entry permit, and a medical slot to pick.
-7. Optional: **Reset demo** and try **Byteforge** (a Cairo dev agency): the engine routes to the ADGM standard licence with two desks.
+7. Ask for the landing pack and **Download everything (.zip)**: the summary, the case file and a simulated PDF of every document issued so far.
+8. Optional: **Reset demo** and try **Byteforge** (a Cairo dev agency): the engine routes to the ADGM standard licence with two desks.
 
 Access: no login is required. The sign-in is a labelled sandbox with demo accounts only; nothing is collected.
 

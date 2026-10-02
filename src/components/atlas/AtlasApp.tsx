@@ -20,7 +20,7 @@ import { STORAGE_KEY } from "./storage";
 import { getAtlasStore, useAtlasSession } from "./store";
 import { TimeControls, TrackerPanel } from "./Tracker";
 import { useAppViewport } from "./useAppViewport";
-import { Welcome } from "./Welcome";
+import { FrontierLine, Welcome } from "./Welcome";
 import { cx } from "./ui";
 
 const WIDE_QUERY = "(min-width: 640px)";
@@ -311,9 +311,13 @@ function AtlasShell() {
                 }
                 onSend={onComposerSend}
               />
-              <p className="mx-auto mt-2 hidden max-w-[760px] text-center text-[12px] text-muted sm:block">
-                Sandbox: filings and payments are simulated. AI checks are not official decisions.
-              </p>
+              {snap.ready && !messages.length ? (
+                <FrontierLine />
+              ) : (
+                <p className="mx-auto mt-2 hidden max-w-[760px] text-center text-[12px] text-muted sm:block">
+                  Sandbox: filings and payments are simulated. AI checks are not official decisions.
+                </p>
+              )}
             </div>
 
             {dragging ? (

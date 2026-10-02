@@ -1,13 +1,15 @@
 "use client";
 
 // "Your landing": the live mirror of the case. A sticky side panel from 1100px, a bottom sheet below.
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { AgentAction, CaseState, PlanCardData, PriceCardData, Profile } from "@/lib/atlas/types";
 import { fmtDate, fmtDay, fmtSimDay, isIsoDate } from "@/lib/atlas/format";
-import { IconCheck, IconFastForward, IconRoute, IconSkip } from "./icons";
+import { useAtlasUi } from "./context";
+import { saveFile } from "./download";
+import { IconCheck, IconDownload, IconFastForward, IconRoute, IconSkip } from "./icons";
 import { CompactStepRow, MilestoneTiles } from "./plan-parts";
 import { RichInline } from "./rich-text";
-import { MicroLabel, Money, SandboxPill, cx } from "./ui";
+import { BUTTON, MicroLabel, Money, SandboxPill, cx } from "./ui";
 
 export const ADVANCE: { key: string; label: string; text: string; action: AgentAction; icon: ReactNode }[] = [
   { key: "week", label: "+1 week", text: "Fast-forward 1 week", action: { type: "advance", days: 7 }, icon: <IconFastForward size={15} /> },
@@ -102,6 +104,27 @@ function facts(
   }
   if (p.parentEntity) out.push({ label: "Parent", value: p.parentEntity });
   return out;
+}
+
+/** The whole landing pack as one ZIP, any time after payment: no need to ask Atlas71 for it. */
+function PackDownload() {
+  const ui = useAtlasUi();
+  const [failed, setFailed] = useState(false);
+  return (
+    <Section>
+      <button
+        type="button"
+        onClick={() => setFailed(!saveFile(ui.exportFile("zip")))}
+        className={cx(BUTTON.secondary, "w-full")}
+      >
+        <IconDownload size={17} />
+        Download landing pack (.zip)
+      </button>
+      <p className="mt-2 text-center text-[12.5px] leading-snug text-muted" role={failed ? "alert" : undefined}>
+        {failed ? "Couldn't build the ZIP in this browser. Try again." : "Every document so far, each marked as a sandbox simulation."}
+      </p>
+    </Section>
+  );
 }
 
 function Section({ children, className }: { children: ReactNode; className?: string }) {
@@ -230,6 +253,8 @@ export function TrackerPanel({
               </ul>
             </Section>
           ))}
+
+          {state.paid ? <PackDownload /> : null}
         </>
       ) : (
         <Section>

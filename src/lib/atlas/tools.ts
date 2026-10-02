@@ -17,6 +17,10 @@ import {
   filingsCard,
   isBankFileStale,
   isFitStale,
+  applyInvestorDocs,
+  documentsCard,
+  INVESTOR_DOCS_OPTION,
+  investorDocsFor,
   isRoute,
   missingFacts,
   payChecklist,
@@ -200,8 +204,15 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
     },
     ["say", "options"],
   ),
-  fn("export_pack", "Show the export card, where the founder downloads the landing pack and the case file."),
+  fn(
+    "export_pack",
+    "Show the export card, where the founder downloads everything as one ZIP: the landing summary, the case file and a simulated PDF of every document issued so far (licence, certificates, visas, bank, receipt).",
+  ),
   SAVE_IDENTITY_TOOL,
+  fn(
+    "use_investor_docs",
+    `Sandbox demo accounts only: read the founder's uploaded investor documents (the SAFE and the cap table), save the source of funds and the ownership from them, and show the documents card. Call it only when the founder picks "${INVESTOR_DOCS_OPTION}".`,
+  ),
   fn(
     "web_search",
     "Search the web ONLY for facts about this founder's move: today's fees, a recent rule change in the UAE or Abu Dhabi, a company's website, Hub71 or ADGM news. Never for anything unrelated to the landing (prices of crypto or stocks, weather, sports, general news, trivia). Returns a short answer and up to 5 sources to cite as [title](url). Never for facts only the founder can give (funding, ownership, who's moving).",
@@ -458,6 +469,18 @@ function bankHint(state: CaseState): string | undefined {
   return "The bank file has open flags: ask the founder for the missing facts.";
 }
 
+/** The founder just filled bank-file gaps after incorporation: re-check the file now instead of waiting for another turn. */
+async function recheckBankFile(changed: string[], ctx: ToolContext): Promise<unknown> {
+  const s = ctx.state;
+  const bankFacts = ["fundingSource", "ownership", "monthlyVolumeUsd", "transactionCountries"];
+  const recheck =
+    changed.some((c) => bankFacts.includes(c)) &&
+    !!s.bankFile &&
+    !s.filings.some((f) => f.step === "bank_file") &&
+    s.filings.some((f) => f.step === "incorporation" && f.status === "done");
+  return recheck ? JSON.parse(await EXECUTORS.prepare_bank_file({}, ctx)) : undefined;
+}
+
 const EXECUTORS: Record<string, Executor> = {
   async save_profile(args, ctx) {
     // Who's moving, the Hub71 letter and the bank facts must come from the founder: TypeSafe checks each
@@ -481,14 +504,7 @@ const EXECUTORS: Record<string, Executor> = {
     const { state, changed, errors } = applyProfile(ctx.state, withoutClaims(args, dropped));
     ctx.state = state;
     if (changed.length) ctx.emit({ t: "state", state });
-    // The founder just filled bank-file gaps: re-check it now instead of waiting for another model turn.
-    const bankFacts = ["fundingSource", "ownership", "monthlyVolumeUsd", "transactionCountries"];
-    const recheck =
-      changed.some((c) => bankFacts.includes(c)) &&
-      !!state.bankFile &&
-      !state.filings.some((f) => f.step === "bank_file") &&
-      state.filings.some((f) => f.step === "incorporation" && f.status === "done");
-    const bankFile = recheck ? JSON.parse(await EXECUTORS.prepare_bank_file({}, ctx)) : undefined;
+    const bankFile = await recheckBankFile(changed, ctx);
     const missing = missingFacts(ctx.state);
     return ok({
       bankFileRechecked: bankFile,
@@ -812,11 +828,38 @@ const EXECUTORS: Record<string, Executor> = {
 
   export_pack(_args, ctx) {
     ctx.emit({ t: "card", card: { kind: "export", data: { generatedOn: ctx.state.today } } });
-    return ok({ note: "The export card is on screen: the landing pack (.md) and the case file (.json) download from it." });
+    return ok({
+      note: "The export card is on screen: one ZIP with the landing summary, the case file and a simulated PDF of every document issued so far. Say each document is a sandbox simulation, not an official copy.",
+    });
   },
 
   save_identity(args, ctx) {
     return executeSaveIdentity(args, ctx);
+  },
+
+  async use_investor_docs(_args, ctx) {
+    if (!investorDocsFor(ctx.state)) {
+      return fail("This founder has no uploaded investor documents. Ask them where the money came from and who owns the company, or to attach the documents.");
+    }
+    // Only on the founder's own choice: their newest message picks the documents.
+    const founder = [...(ctx.conversation ?? [])].reverse().find((m) => m.role === "user")?.content ?? "";
+    if (!/\b(uploaded|investor (docs?|documents?)|SAFE|cap table)\b/i.test(founder)) {
+      return fail(`The founder hasn't chosen their uploaded documents. Ask them, offering "${INVESTOR_DOCS_OPTION}".`);
+    }
+    const r = applyInvestorDocs(ctx.state);
+    if (!r.docs) return fail("No uploaded investor documents.");
+    ctx.state = r.state;
+    ctx.emit({ t: "state", state: r.state });
+    ctx.emit({ t: "card", card: { kind: "documents", data: documentsCard(r.docs) } });
+    const bankFile = await recheckBankFile(r.changed, ctx);
+    return ok({
+      read: r.docs.files,
+      fundingSource: r.docs.fundingSource,
+      ownership: r.docs.ownership,
+      bankFileRechecked: bankFile,
+      note: "The documents card is on screen. In one sentence say what they show (investor, amount, instrument, stake) and that the founder can correct anything by typing it, then carry on.",
+      next: bankFile ? "The bank file was re-checked (see bankFileRechecked): tell the founder the result." : (payHint(ctx.state) ?? nextHint(ctx.state)),
+    });
   },
 
   async web_search(args, ctx) {

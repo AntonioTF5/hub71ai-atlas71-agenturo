@@ -9,7 +9,7 @@ import type { PayCheck } from "@/lib/atlas/engine";
 
 export interface ExportFile {
   name: string;
-  body: string;
+  body: string | Uint8Array<ArrayBuffer>;
   type: string;
 }
 
@@ -23,7 +23,7 @@ export interface AtlasUi {
   /** payChecklist(state) for the live case: what the founder settles before Confirm & pay unlocks. */
   payChecklist: PayCheck[];
   isPartial: (card: PriceCardData) => boolean;
-  exportFile: (ext: "md" | "json") => ExportFile | null;
+  exportFile: (ext: "md" | "json" | "zip") => ExportFile | null;
 }
 
 const AtlasUiContext = createContext<AtlasUi | null>(null);

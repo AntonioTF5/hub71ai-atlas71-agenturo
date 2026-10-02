@@ -4,6 +4,7 @@ import type {
   CaseState,
   CheckoutCardData,
   Dependant,
+  DocumentsCardData,
   Filing,
   FilingsCardData,
   FitResult,
@@ -26,7 +27,7 @@ import type {
 } from "./types";
 import { EXCLUDED, FEES, GROUPS, INCLUDED, ROUTES, STEPS, sourceRefs } from "./kb.ts";
 import { addDays, addMonths, aed, fmtDate, fmtDateLong, fmtDay, isIsoDate, maxDate } from "./format.ts";
-import { emptyCase, SANDBOX_PASSPORTS } from "./personas.ts";
+import { emptyCase, SANDBOX_INVESTOR_DOCS, SANDBOX_PASSPORTS, type SandboxInvestorDocs } from "./personas.ts";
 
 // ---------- small helpers ----------
 
@@ -1329,12 +1330,59 @@ export function payChecklist(state: CaseState): PayCheck[] {
   }
 
   const bank = missingFacts(state).bank;
+  // A demo founder's uploaded investor documents answer the source of funds and ownership in one tap.
+  const docs = investorDocsFor(state) && bank.some((k) => k === "fundingSource" || k === "ownership");
   out.push(
     bank.length
-      ? { key: "bank", label: "Bank file facts", done: false, detail: `For the bank file: ${joinAnd(bank.map((k) => SHORT_FACT[k] ?? k))}` }
+      ? {
+          key: "bank",
+          label: "Bank file facts",
+          done: false,
+          detail: `For the bank file: ${joinAnd(bank.map((k) => SHORT_FACT[k] ?? k))}`,
+          ...(docs ? { options: [INVESTOR_DOCS_OPTION, "I'll attach documents"] } : {}),
+        }
       : { key: "bank", label: "Bank file facts", done: true, detail: "Source of funds, ownership, volume and countries confirmed" },
   );
   return out;
+}
+
+export const INVESTOR_DOCS_OPTION = "Use my uploaded investor docs";
+
+/** The demo persona's uploaded investor documents (SAFE and cap table), or null for anyone else. */
+export function investorDocsFor(state: CaseState): SandboxInvestorDocs | null {
+  return (state.persona && SANDBOX_INVESTOR_DOCS[state.persona]) || null;
+}
+
+/** Save the source of funds and ownership read from the persona's uploaded investor documents. */
+export function applyInvestorDocs(input: CaseState): { state: CaseState; docs: SandboxInvestorDocs | null; changed: string[] } {
+  const docs = investorDocsFor(input);
+  if (!docs) return { state: input, docs: null, changed: [] };
+  const p = input.profile;
+  const changed: string[] = [];
+  const state = clone(input);
+  if (p.fundingSource !== docs.fundingSource) changed.push("fundingSource");
+  if (p.ownership !== docs.ownership) changed.push("ownership");
+  if (p.fundingUsd !== docs.amountUsd) changed.push("fundingUsd");
+  state.profile = { ...state.profile, fundingSource: docs.fundingSource, ownership: docs.ownership, fundingUsd: docs.amountUsd };
+  // The landing pack includes the documents these facts came from.
+  state.inputs.investorDocs = "sandbox";
+  return { state, docs, changed };
+}
+
+/** What the investor documents card shows: the files read and the facts taken from them. */
+export function documentsCard(docs: SandboxInvestorDocs): DocumentsCardData {
+  return {
+    files: docs.files,
+    facts: [
+      { label: "Investor", value: docs.investor },
+      { label: "Amount", value: `USD ${docs.amountUsd.toLocaleString("en-US")}` },
+      { label: "Instrument", value: docs.instrument },
+      { label: "Stake", value: docs.stake },
+      { label: "Cap table", value: docs.capTable.map((c) => `${c.holder.replace(/,.*$/, "")} ${c.pct}%`).join(" · ") },
+    ],
+    usedFor: ["Wio Business: source of funds and ownership in the bank file", "Your landing pack: copies of both documents"],
+    sandbox: true,
+  };
 }
 
 /** True when the founder can press Confirm & pay: a fully priced route with every detail collected. */

@@ -75,16 +75,7 @@ export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void;
         })}
       </ol>
 
-      <p className="atlas-rise mt-8 flex gap-2.5 text-pretty text-[14.5px] leading-relaxed text-muted [animation-delay:180ms] sm:mt-9">
-        <IconSparkle size={17} className="mt-[3px] shrink-0 text-accent" />
-        <span>
-          Built on frontier AI, so you answer questions instead of filling in forms. <Name>GPT-6.1 Sol</Name> reasons
-          through your case, <Name>TypeSafe</Name> fact-checks every answer in about 150&nbsp;ms and <Name>Tavily</Name>{" "}
-          reads official pages live.
-        </span>
-      </p>
-
-      <div className="atlas-rise mt-8 [animation-delay:240ms] sm:mt-9">
+      <div className="atlas-rise mt-8 [animation-delay:180ms] sm:mt-10">
         <h2 className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">Try a demo founder</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {PERSONAS.map((p) => (
@@ -115,7 +106,7 @@ export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void;
         </div>
       </div>
 
-      <p className="atlas-rise mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted [animation-delay:300ms]">
+      <p className="atlas-rise mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted [animation-delay:240ms]">
         <span>Files with</span>
         {PROVIDERS.map((name, i) => (
           <span key={name} translate="no" className="font-medium text-ink/80">
@@ -130,5 +121,24 @@ export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void;
         <span className="text-gold-ink">· sandbox</span>
       </p>
     </div>
+  );
+}
+
+/** Under the composer on the landing: the frontier AI that does the forms for the founder. */
+export function FrontierLine() {
+  return (
+    <p className="mx-auto mt-2 max-w-[760px] text-balance text-center text-[12.5px] leading-snug text-muted">
+      <IconSparkle size={14} className="mr-1.5 inline-block align-[-2px] text-accent" />
+      <span>
+        Frontier AI does the forms for you
+        <span className="block sm:hidden">
+          <Name>GPT-6.1 Sol</Name> · <Name>TypeSafe</Name> · <Name>Tavily</Name>
+        </span>
+        <span className="hidden sm:inline">
+          : <Name>GPT-6.1 Sol</Name> reasons through your case, <Name>TypeSafe</Name> fact-checks every answer in about
+          150&nbsp;ms and <Name>Tavily</Name> reads official pages live.
+        </span>
+      </span>
+    </p>
   );
 }

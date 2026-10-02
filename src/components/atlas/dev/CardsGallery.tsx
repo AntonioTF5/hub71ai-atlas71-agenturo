@@ -140,6 +140,7 @@ export default function CardsGallery() {
   const cards: [string, CaseState, Parameters<typeof CardView>[0]["card"]][] = [
     ["Checkout · from history", F.statePaid, { kind: "checkout", data: F.checkoutCard }],
     ["Passport details · all valid", F.stateUnpaid, { kind: "identity", data: FX.identityCardOk }],
+    ["Investor documents · uploaded (sandbox)", F.stateUnpaid, { kind: "documents", data: FX.documentsCardRoutely }],
     ["Passport details · short validity, missing people", F.stateUnpaid, { kind: "identity", data: FX.identityCardWarning }],
     ["Compare · Abu Dhabi vs Bangalore", F.stateFacts, { kind: "compare", data: F.compareCard }],
     ["Route · Routely (live TypeSafe)", F.stateUnpaid, { kind: "route", data: F.routeCard }],
