@@ -263,7 +263,7 @@ export function Composer({
             type="button"
             onClick={() => showError(null)}
             aria-label="Dismiss"
-            className="grid size-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-bad/10"
+            className="-my-1 grid size-10 shrink-0 place-items-center rounded-full transition-colors hover:bg-bad/10"
           >
             <IconX size={14} />
           </button>

@@ -117,7 +117,7 @@ function ErrorRow({ error, canRetry, busy, onRetry }: { error: string; canRetry:
       <IconAlert size={18} className="shrink-0 text-bad" />
       <p className="min-w-0 flex-1 text-[15px] leading-snug text-bad">{error}</p>
       {canRetry ? (
-        <button type="button" className={cx(BUTTON.secondary, "min-h-10 bg-surface")} disabled={busy} onClick={onRetry}>
+        <button type="button" className={cx(BUTTON.secondary, "bg-surface")} disabled={busy} onClick={onRetry}>
           <IconRefresh size={16} />
           Retry
         </button>

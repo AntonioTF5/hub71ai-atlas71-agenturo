@@ -158,7 +158,8 @@ export default function CardsGallery() {
             className="text-accent-ink underline"
             onClick={() => {
               saveSession({ state: F.statePaid, messages: F.conversation });
-              window.location.href = "/";
+              // A full load, so the app's store reads the saved case fresh.
+              window.location.assign(new URL("/", window.location.href).toString());
             }}
           >
             Open the app with this case

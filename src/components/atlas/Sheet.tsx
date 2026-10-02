@@ -131,7 +131,7 @@ export function Sheet({
       }}
     >
       <div
-        className="relative flex h-11 shrink-0 touch-none items-center justify-end px-2 md:h-14 md:px-3"
+        className="relative flex h-11 shrink-0 touch-none items-center justify-end px-2 md:h-16 md:px-4"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

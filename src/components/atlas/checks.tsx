@@ -26,7 +26,13 @@ function clamp01(p: unknown): number {
   return Math.min(1, Math.max(0, n));
 }
 
-export function CheckList({ checks }: { checks: Judgment[] }) {
+/** For "what matters to this founder" questions: a plain answer, never a pass or a fail. */
+function AnswerChip({ p }: { p: number }) {
+  const label = p >= 0.65 ? "Yes" : p <= 0.35 ? "No" : "Unsure";
+  return <Pill tone="neutral" className="min-w-[3.25rem] justify-center text-ink">{label}</Pill>;
+}
+
+export function CheckList({ checks, mode = "verdict" }: { checks: Judgment[]; mode?: "verdict" | "answer" }) {
   if (!checks.length) return null;
   return (
     <ul className="divide-y divide-line">
@@ -49,11 +55,11 @@ export function CheckList({ checks }: { checks: Judgment[] }) {
                 aria-label={`AI check (TypeSafe): ${pct}% likely`}
                 className="h-2 flex-1 overflow-hidden rounded-full bg-line"
               >
-                <div className={cx("h-full rounded-full", v.bar)} style={{ width: `${Math.max(pct, 2)}%` }} />
+                <div className={cx("h-full rounded-full", mode === "answer" ? "bg-ink/55" : v.bar)} style={{ width: `${Math.max(pct, 2)}%` }} />
               </div>
               <span className="w-9 text-right text-[13px] font-medium tabular-nums text-muted">{pct}%</span>
             </div>
-            <VerdictChip verdict={c.verdict} />
+            {mode === "answer" ? <AnswerChip p={clamp01(c.p)} /> : <VerdictChip verdict={c.verdict} />}
           </li>
         );
       })}

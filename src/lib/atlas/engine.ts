@@ -675,8 +675,22 @@ function withWho(text: string, who?: string): string {
 
 function filedText(state: CaseState, f: Filing): string {
   const who = whoFor(state.profile, f.step, f.subjectId);
-  const title = STEPS[f.step].title;
-  return `${withWho(`Filed ${title.charAt(0).toLowerCase()}${title.slice(1)}`, who)} with ${f.provider} (${f.ref}), ETA ${fmtDate(f.etaOn)}`;
+  const forWho = who ? ` for ${who}` : "";
+  const what: Record<StepId, string> = {
+    hub71_letter: "Applied for the Hub71 eligibility letter",
+    desk: "Reserved the dedicated desk",
+    incorporation: "Filed incorporation and the commercial licence",
+    establishment_card: "Filed the establishment card and e-Channels",
+    tax_registration: "Filed corporate tax registration",
+    entry_permit: `Filed the entry and work permit${forWho}`,
+    medical: `Booked the medical fitness test${forWho}`,
+    emirates_id: `Filed biometrics, Emirates ID and residence visa${forWho}`,
+    dependant_visa: `Filed the dependant residence visa${forWho}`,
+    bank_file: "Prepared the bank file",
+    bank_account: "Applied for the business bank account",
+    payments: "Applied for payments",
+  };
+  return `${what[f.step]} with ${f.provider} (${f.ref}), ETA ${fmtDate(f.etaOn)}`;
 }
 
 function issuedText(state: CaseState, f: Filing): string {

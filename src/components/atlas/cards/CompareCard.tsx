@@ -123,7 +123,7 @@ export function CompareCard({ data }: { data: CompareCardData }) {
 
       {data.checks?.length ? (
         <CardSection label="AI checks (TypeSafe), not official advice" className="mt-5">
-          <CheckList checks={data.checks} />
+          <CheckList checks={data.checks} mode="answer" />
         </CardSection>
       ) : null}
 

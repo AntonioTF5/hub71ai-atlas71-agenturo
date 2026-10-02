@@ -38,10 +38,10 @@ export function TimeControls({
           className={cx(
             "inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-line-strong bg-surface text-[14px] font-medium text-ink transition-colors",
             "hover:border-accent hover:text-accent-ink disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line-strong disabled:hover:text-ink",
-            compact ? "shrink-0 px-3.5" : "min-w-0 flex-1 px-2",
+            compact ? "shrink-0 px-3 max-sm:flex-1 max-sm:px-2" : "min-w-0 flex-1 px-2",
           )}
         >
-          <span className="text-accent">{a.icon}</span>
+          <span className={cx("text-accent", compact && "max-sm:hidden")}>{a.icon}</span>
           {a.label}
         </button>
       ))}

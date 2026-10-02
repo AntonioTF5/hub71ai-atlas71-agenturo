@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { SOURCES } from "@/lib/atlas/kb";
 import { num } from "@/lib/atlas/format";
 import type { ChecksMeta, SourceRef, StepStatus } from "@/lib/atlas/types";
-import { IconCheck, IconClock, IconExternal, IconLock, IconSend } from "./icons";
+import { IconCheck, IconChevronDown, IconClock, IconExternal, IconLock, IconSend } from "./icons";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -177,14 +177,25 @@ export function SourceRow({ sources, label = "Sources" }: { sources: (string | S
     refs.push(ref);
   }
   if (!refs.length) return null;
+  const chips = refs.map((r) => <SourceChip key={r.id} id={r.id} fallback={r} />);
+  // A long list folds away behind a disclosure: the rows above already carry their own chips.
+  if (refs.length > 6) {
+    return (
+      <details className="group">
+        <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 rounded-full text-[12px] font-semibold uppercase tracking-[0.09em] text-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+          {label} ({refs.length})
+          <IconChevronDown size={14} className="transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-1.5 flex flex-wrap gap-x-1 gap-y-1.5">{chips}</div>
+      </details>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
       <MicroLabel as="span" className="mr-1">
         {label}
       </MicroLabel>
-      {refs.map((r) => (
-        <SourceChip key={r.id} id={r.id} fallback={r} />
-      ))}
+      {chips}
     </div>
   );
 }

@@ -51,11 +51,18 @@ async function checkTypeSafe() {
   }
 }
 
+// The app checks health on every page load; reuse a result for a minute instead of paying for a
+// completion each time. Failures aren't cached, so a fixed key shows up on the next load.
+let cached: { at: number; body: unknown } | undefined;
+
 export async function GET() {
+  if (cached && Date.now() - cached.at < 60_000) return Response.json(cached.body);
   const [openrouter, ts] = await Promise.all([checkOpenRouter(), checkTypeSafe()]);
   const body = {
     openrouter: { ...describe(process.env.OPENROUTER_API_KEY), ...openrouter },
     typesafe: { ...describe(process.env.TYPESAFE_API_KEY), ...ts },
   };
-  return Response.json(body, { status: openrouter.ok && ts.ok ? 200 : 503 });
+  const ok = openrouter.ok && ts.ok;
+  cached = ok ? { at: Date.now(), body } : undefined;
+  return Response.json(body, { status: ok ? 200 : 503 });
 }

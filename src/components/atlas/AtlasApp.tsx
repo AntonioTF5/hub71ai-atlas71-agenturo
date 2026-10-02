@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { AgentAction } from "@/lib/atlas/types";
 import type { Attachment } from "@/lib/atlas/attachments";
 import { aed } from "@/lib/atlas/format";
@@ -19,6 +19,14 @@ import { TimeControls, TrackerPanel } from "./Tracker";
 import { useAppViewport } from "./useAppViewport";
 import { Welcome } from "./Welcome";
 import { cx } from "./ui";
+
+const WIDE_QUERY = "(min-width: 640px)";
+function subscribeWide(cb: () => void) {
+  const mq = window.matchMedia?.(WIDE_QUERY);
+  mq?.addEventListener("change", cb);
+  return () => mq?.removeEventListener("change", cb);
+}
+const isWide = () => !!window.matchMedia?.(WIDE_QUERY).matches;
 
 function textOf(m: UiMessage): string {
   return m.parts
@@ -71,10 +79,10 @@ function UndoToast({ onUndo, onDismiss }: { onUndo: () => void; onDismiss: () =>
     <div className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4" style={{ bottom: "calc(var(--sab) + 7.5rem)" }}>
       <div role="status" className="atlas-rise pointer-events-auto flex items-center gap-1 rounded-full bg-ink py-1 pl-4 pr-1 text-[14px] text-white shadow-float">
         <span className="pr-2">Started a fresh case.</span>
-        <button type="button" onClick={onUndo} className="min-h-10 rounded-full px-3 font-semibold text-accent-soft hover:bg-white/10">
+        <button type="button" onClick={onUndo} className="min-h-11 rounded-full px-3 font-semibold text-accent-soft hover:bg-white/10">
           Undo
         </button>
-        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="grid size-10 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
+        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="grid size-11 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
           <IconX size={16} />
         </button>
       </div>
@@ -92,6 +100,7 @@ function AtlasShell() {
   }, [store]);
 
   const { state, messages, busy } = snap;
+  const wide = useSyncExternalStore(subscribeWide, isWide, () => false);
   const derived = useMemo(() => derive(state), [state]);
   const partial = derived.price ? isPartialPrice(derived.price) : false;
 
@@ -223,20 +232,34 @@ function AtlasShell() {
                     <button
                       type="button"
                       aria-haspopup="dialog"
+                      aria-label={`Your landing${landingStatus ? `: ${landingStatus}` : ""}${derived.waiting.length ? ", something is waiting on you" : ""}`}
                       onClick={() => setSheetOpen(true)}
-                      className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface pl-1.5 pr-3 text-[14px] shadow-card transition-colors hover:border-accent"
+                      className={cx(
+                        "relative inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface pl-1.5 pr-3 text-[14px] shadow-card transition-colors hover:border-accent",
+                        // Once the clock controls share the row, a phone gets the icon alone.
+                        state.paid && "max-sm:w-11 max-sm:justify-center max-sm:px-0",
+                      )}
                     >
-                      <span className="grid size-8 place-items-center rounded-full bg-accent-soft text-accent">
+                      <span className="grid size-8 place-items-center rounded-full bg-accent-soft text-accent" aria-hidden="true">
                         <IconPanel size={16} />
                       </span>
-                      <span className="font-semibold text-ink">Your landing</span>
-                      {landingStatus ? <span className="tabular-nums text-muted">{landingStatus}</span> : null}
-                      {derived.waiting.length ? (
-                        <span className="size-2 rounded-full bg-gold" role="img" aria-label="Something is waiting on you" />
+                      <span className={cx("font-semibold text-ink", state.paid && "max-sm:hidden")} aria-hidden="true">
+                        Your landing
+                      </span>
+                      {landingStatus ? (
+                        <span className={cx("tabular-nums text-muted", state.paid && "max-sm:hidden")} aria-hidden="true">
+                          {landingStatus}
+                        </span>
                       ) : null}
-                      <IconChevronUp size={16} className="text-muted" />
+                      {derived.waiting.length ? (
+                        <span
+                          aria-hidden="true"
+                          className={cx("size-2 rounded-full bg-gold", state.paid && "max-sm:absolute max-sm:right-0.5 max-sm:top-0.5 max-sm:size-2.5 max-sm:ring-2 max-sm:ring-surface")}
+                        />
+                      ) : null}
+                      <IconChevronUp size={16} className={cx("text-muted", state.paid && "max-sm:hidden")} aria-hidden="true" />
                     </button>
-                    {state.paid ? <TimeControls compact busy={busy} onAdvance={onAdvance} /> : null}
+                    {state.paid ? <TimeControls compact busy={busy} onAdvance={onAdvance} className="max-sm:min-w-0 max-sm:flex-1" /> : null}
                   </div>
                 </div>
               ) : null}
@@ -244,7 +267,9 @@ function AtlasShell() {
                 ref={composerRef}
                 busy={busy || !snap.ready}
                 history={history}
-                placeholder={messages.length ? "Reply to Atlas71…" : "Tell Atlas71 what you build and who's moving…"}
+                placeholder={
+                  messages.length ? "Reply to Atlas71…" : wide ? "Tell Atlas71 what you build and who's moving…" : "Tell Atlas71 what you build…"
+                }
                 onSend={onComposerSend}
               />
               <p className="mx-auto mt-2 hidden max-w-[760px] text-center text-[12px] text-muted sm:block">
