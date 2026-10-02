@@ -207,7 +207,16 @@ function bankFacts(state: CaseState) {
 }
 
 function templateBankFile(state: CaseState): { title: string; body: string }[] {
-  const f = bankFacts(state);
+  const raw = bankFacts(state);
+  const trim = (v: string | null) => (v ? v.trim().replace(/[.;\s]+$/, "") : v);
+  const f = {
+    ...raw,
+    activity: trim(raw.activity),
+    fundingSource: trim(raw.fundingSource),
+    ownership: trim(raw.ownership),
+    parentEntity: trim(raw.parentEntity),
+    transactionCountries: trim(raw.transactionCountries),
+  };
   const usd = (n: number | null) => (n == null ? PLACEHOLDER : `USD ${Math.round(n).toLocaleString("en-US")}`);
   return [
     {
@@ -567,9 +576,12 @@ const EXECUTORS: Record<string, Executor> = {
     }
     if (s.filings.some((f) => f.step === "bank_file")) return ok({ ready: true, note: "Already prepared for bank review." });
 
-    ctx.emit({ t: "activity", d: "Drafting the bank file…" });
-    const sections = await draftBankFile(s);
-    ctx.emit({ t: "activity", d: "Drafted the bank file", done: true });
+    // The first draft is written by the model around the gaps. Once the founder has confirmed every bank
+    // fact, the file is rebuilt straight from those facts: no new wording to invent, and no wait on stage.
+    const update = !!s.bankFile && !missingFacts(s).bank.length;
+    ctx.emit({ t: "activity", d: update ? "Updating the bank file with your answers…" : "Drafting the bank file…" });
+    const sections = update ? templateBankFile(s) : await draftBankFile(s);
+    ctx.emit({ t: "activity", d: update ? "Updated the bank file" : "Drafted the bank file", done: true });
     ctx.emit({ t: "activity", d: "Checking the bank file with TypeSafe…" });
     const { judgments, meta } = await runBankChecks(s, sections);
     ctx.emit({

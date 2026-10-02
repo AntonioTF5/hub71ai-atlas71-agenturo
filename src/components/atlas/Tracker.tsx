@@ -3,7 +3,7 @@
 // "Your landing": the live mirror of the case. A sticky side panel from 1100px, a bottom sheet below.
 import type { ReactNode } from "react";
 import type { AgentAction, CaseState, PlanCardData, PriceCardData, Profile } from "@/lib/atlas/types";
-import { fmtDay, fmtSimDay, isIsoDate } from "@/lib/atlas/format";
+import { fmtDate, fmtDay, fmtSimDay, isIsoDate } from "@/lib/atlas/format";
 import { IconCheck, IconFastForward, IconRoute, IconSkip } from "./icons";
 import { CompactStepRow, MilestoneTiles } from "./plan-parts";
 import { RichInline } from "./rich-text";
@@ -55,7 +55,11 @@ function usd(n: number): string {
   return `$${Math.round(n)}`;
 }
 
-function facts(p: Profile, inputs: Record<string, string> = {}): { label: string; value: ReactNode }[] {
+function facts(
+  p: Profile,
+  inputs: Record<string, string> = {},
+  filings: CaseState["filings"] = [],
+): { label: string; value: ReactNode }[] {
   const out: { label: string; value: ReactNode }[] = [];
   const movers = p.people.filter((x) => x.relocating);
   const unsure = p.people.filter((x) => inputs[`relocating:${x.id}`] === "unconfirmed");
@@ -76,13 +80,23 @@ function facts(p: Profile, inputs: Record<string, string> = {}): { label: string
   if (staying.length) out.push({ label: "Staying", value: staying.map((s) => s.name).join(", ") });
   if (unsure.length) out.push({ label: "Not sure yet", value: unsure.map((s) => s.name).join(", ") });
   if (p.hub71Letter) {
+    const letter = filings.find((f) => f.step === "hub71_letter");
     out.push({
       label: "Hub71 letter",
-      value: p.hub71Letter === "have" ? "Have it" : p.hub71Letter === "applied" ? "Applied" : "Not yet · Atlas71 files it",
+      value:
+        letter?.status === "done" && letter.doneOn
+          ? `Issued ${fmtDate(letter.doneOn)}`
+          : letter
+            ? `Filed · ETA ${fmtDate(letter.etaOn)}`
+            : p.hub71Letter === "have"
+              ? "Have it"
+              : p.hub71Letter === "applied"
+                ? "Applied"
+                : "Not yet · Atlas71 files it",
     });
   }
-  if (p.fundingUsd != null || p.fundingSource) {
-    out.push({ label: "Funding", value: [p.fundingUsd != null ? usd(p.fundingUsd) : null, p.fundingSource].filter(Boolean).join(" · ") });
+  if (p.fundingSource || p.fundingUsd != null) {
+    out.push({ label: "Funding", value: p.fundingSource ?? usd(p.fundingUsd as number) });
   }
   if (p.parentEntity) out.push({ label: "Parent", value: p.parentEntity });
   return out;
@@ -114,7 +128,7 @@ export function TrackerPanel({
   headingId?: string;
 }) {
   const p = state.profile;
-  const factList = facts(p, state.inputs);
+  const factList = facts(p, state.inputs, state.filings);
   const etas = new Map(state.filings.map((f) => [f.id, f.etaOn]));
   const steps = plan?.groups.flatMap((g) => g.steps) ?? [];
   const done = steps.filter((s) => s.status === "done").length;

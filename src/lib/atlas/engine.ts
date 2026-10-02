@@ -166,6 +166,18 @@ export function missingFacts(state: CaseState): { route: string[]; bank: string[
   return { route, bank };
 }
 
+/** Short names for the bank facts, for one-line "waiting on you" items. */
+const SHORT_FACT: Record<string, string> = {
+  fundingSource: "the source of funds",
+  ownership: "the ownership chain",
+  monthlyVolumeUsd: "the monthly volume",
+  transactionCountries: "the payment countries",
+};
+
+function joinAnd(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 export function describeFact(key: string): string {
   if (key.startsWith("relocating:")) return `whether ${key.slice("relocating:".length)} is relocating too`;
   return FACT_LABELS[key] ?? key;
@@ -467,8 +479,8 @@ function stepNote(state: CaseState, route: RouteId, inst: StepInstance, status: 
       return state.inputs[`documents:${inst.subjectId}`] ? "Documents received." : base;
     case "bank_file": {
       if (status === "done") return "Prepared for bank review.";
-      const missing = missingFacts(state).bank.map((k) => FACT_LABELS[k]);
-      if (missing.length) return `Needs ${missing.join("; ")}.`;
+      const missing = missingFacts(state).bank.map((k) => SHORT_FACT[k] ?? k);
+      if (missing.length) return `Needs ${joinAnd(missing)}.`;
       if (state.bankFile && !state.bankFile.ready && !isBankFileStale(state)) return "Fix the flagged items, then Atlas71 re-checks.";
       return base;
     }
@@ -734,9 +746,9 @@ function needsInputText(state: CaseState, inst: StepInstance): string {
       return `${d?.relation === "child" ? "Legalised birth certificate" : "Legalised marriage certificate"} needed for ${who ?? "the dependant visa"}`;
     }
     case "bank_file": {
-      const missing = missingFacts(state).bank.map((k) => FACT_LABELS[k]);
+      const missing = missingFacts(state).bank.map((k) => SHORT_FACT[k] ?? k);
       return missing.length
-        ? `Bank file: confirm ${missing.join("; ")}`
+        ? `Bank file: confirm ${joinAnd(missing)}`
         : "Bank file: fix the flagged items so Atlas71 can re-check it";
     }
     default:
@@ -851,17 +863,10 @@ export function advance(
   return { state, filed, events, from, to: state.today };
 }
 
-/** The next working day after `iso` (the UAE weekend is Saturday and Sunday). */
-function nextWorkday(iso: string): string {
-  let d = addDays(iso, 1);
-  while ([0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay())) d = addDays(d, 1);
-  return d;
-}
-
+/** Slots the day after the request, so results land on the medical step's ETA (filing day + 2). */
 export function medicalSlots(state: CaseState): string[] {
-  const d1 = nextWorkday(state.today);
-  const d2 = nextWorkday(d1);
-  return [`${fmtDay(d1)}, 09:00 · SEHA Al Bateen`, `${fmtDay(d1)}, 14:30 · SEHA Mussafah`, `${fmtDay(d2)}, 10:00 · SEHA Khalifa City`];
+  const d = fmtDay(addDays(state.today, 1));
+  return [`${d}, 09:00 · SEHA Al Bateen`, `${d}, 11:30 · SEHA Khalifa City`, `${d}, 14:30 · SEHA Mussafah`];
 }
 
 /** Resolve `medical:<personId>` / `documents:<dependantId>`, also accepting a name instead of the id. */

@@ -41,7 +41,8 @@ export function BankFileCard({ data }: { data: BankFileCardData }) {
   const sections = data.sections ?? [];
   const missing = data.missing ?? [];
   const checks = data.checks ?? [];
-  const issues = checks.filter((c) => c.verdict !== "pass").length + missing.length;
+  // A missing fact and the check it fails are the same gap, so count the larger of the two, not both.
+  const issues = Math.max(checks.filter((c) => c.verdict !== "pass").length, missing.length);
   const ready = !!data.ready && !!meta?.live;
 
   return (
