@@ -47,7 +47,7 @@ export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void;
               className="group flex w-full items-start gap-4 rounded-card border border-line bg-surface p-4 text-left shadow-card transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-60 sm:p-5"
             >
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent-soft text-[15px] font-semibold text-accent-ink">
-                {initials(p.founder)}
+                {initials(p.founderName || p.founder)}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">

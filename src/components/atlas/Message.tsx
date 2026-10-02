@@ -211,7 +211,9 @@ function AssistantMessage({
   const lastPart = message.parts[message.parts.length - 1];
   const running = message.parts.some((p) => p.type === "activity" && !p.done);
   // Keep a sign of life until visible words arrive: before any part, and after activities or a card.
-  const waiting = pending && !running && (!lastPart || lastPart.type === "activity" || lastPart.type === "card");
+  // The checkout card plays its own animation; dots under it would compete.
+  const checkoutPlaying = lastPart?.type === "card" && lastPart.card.kind === "checkout";
+  const waiting = pending && !running && !checkoutPlaying && (!lastPart || lastPart.type === "activity" || lastPart.type === "card");
   const rendered: ReactNode[] = all.map((b, i) => {
     if (b.kind === "activities") {
       return (
@@ -227,7 +229,7 @@ function AssistantMessage({
       case "text":
         return part.text.trim() ? <RichText key={i} text={part.text} streaming={pending && b.index === lastTextIndex} /> : null;
       case "card":
-        return <CardView key={i} card={part.card} />;
+        return <CardView key={i} card={part.card} live={pending} />;
       case "choices":
         return <Choices key={i} options={part.options} enabled={isLast && !busy && !pending} chosen={nextUserText} onPick={onPick} />;
       default:

@@ -2,6 +2,7 @@
 // Generated from the real engine over the Routely and Byteforge cases; the bank file is hand-written.
 import type {
   BankFileCardData,
+  CheckoutCardData,
   CompareCardData,
   CaseState,
   FilingsCardData,
@@ -2444,4 +2445,20 @@ export const compareCard: CompareCardData = {
     { id: "fta-ct", title: "FTA · Corporate tax registration timeframes", url: "https://tax.gov.ae/en/media.centre/news/federal.tax.authority.issues.new.decision.on.specified.timeframes.for.corporate.tax.registration.aspx" },
     { id: "hub71-access", title: "Hub71 · Access programme", url: "https://www.hub71.com/program/access-programme" },
   ],
+};
+
+export const checkoutCard: CheckoutCardData = {
+  merchant: "Atlas71",
+  description: "Abu Dhabi landing for Routely · ADGM Tech Startup Licence",
+  amountAed: 40075,
+  lines: [
+    { label: "Atlas71 landing fee", amountAed: 4900 },
+    { label: "Government fees, at cost", amountAed: 21375 },
+    { label: "Providers, at cost", amountAed: 13800 },
+  ],
+  payer: { name: "Meera Iyer", email: "meera@routely.io", company: "Routely", country: "India" },
+  method: { brand: "Visa", last4: "4242", expiry: "12/29", label: "Test card" },
+  receipt: "A71-RCPT-26-418207",
+  paidOn: "2026-10-02",
+  status: "succeeded",
 };

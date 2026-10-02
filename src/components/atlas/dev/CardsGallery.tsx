@@ -1,7 +1,7 @@
 "use client";
 
 // Dev-only gallery: every card, message state and tracker state rendered from fixtures, no server.
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { CaseState } from "@/lib/atlas/types";
 import { emptyCase } from "@/lib/atlas/personas";
 import { CardView } from "../cards/CardView";
@@ -93,6 +93,24 @@ const FILES: UiMessage[] = [
   },
 ];
 
+/** The checkout as it plays live, with a replay button for screenshots and rehearsal. */
+function CheckoutReplay() {
+  const [run, setRun] = useState(0);
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between pt-10">
+        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-muted">Checkout · live (animates once)</p>
+        <button type="button" className="text-[13px] text-accent-ink underline" onClick={() => setRun((n) => n + 1)}>
+          Replay
+        </button>
+      </div>
+      <Fixture state={F.statePaid}>
+        <CardView key={run} card={{ kind: "checkout", data: F.checkoutCard }} live />
+      </Fixture>
+    </div>
+  );
+}
+
 export default function CardsGallery() {
   const empty = useMemo(() => emptyCase(F.FIX_START), []);
   const sections: [string, ReactNode][] = [
@@ -117,6 +135,7 @@ export default function CardsGallery() {
   ];
 
   const cards: [string, CaseState, Parameters<typeof CardView>[0]["card"]][] = [
+    ["Checkout · from history", F.statePaid, { kind: "checkout", data: F.checkoutCard }],
     ["Compare · Abu Dhabi vs Bangalore", F.stateFacts, { kind: "compare", data: F.compareCard }],
     ["Route · Routely (live TypeSafe)", F.stateUnpaid, { kind: "route", data: F.routeCard }],
     ["Route · Byteforge (service provider flagged)", F.stateByteforge, { kind: "route", data: F.routeCardByteforge }],
@@ -177,6 +196,7 @@ export default function CardsGallery() {
           ))}
         </div>
         <div id="cards" className="scroll-mt-4">
+          <CheckoutReplay />
           {cards.map(([label, state, card]) => (
             <div key={label}>
               <Label>{label}</Label>

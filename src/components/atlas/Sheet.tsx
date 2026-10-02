@@ -3,6 +3,7 @@
 // A modal sheet on the native <dialog>: focus trap, Escape and inert background come from the
 // platform. Bottom sheet with a drag handle on phones, a right-hand drawer from 768px.
 import { useEffect, useRef, type ReactNode } from "react";
+import { wrapTab } from "./focus";
 import { IconX } from "./icons";
 
 const LOCK = "atlas-locked";
@@ -123,6 +124,7 @@ export function Sheet({
         e.preventDefault();
         onClose();
       }}
+      onKeyDown={wrapTab}
       onClose={() => {
         document.documentElement.classList.remove(LOCK);
       }}

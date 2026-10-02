@@ -4,6 +4,7 @@ import { Component, type ReactNode } from "react";
 import type { Card } from "@/lib/atlas/types";
 import { IconAlert } from "../icons";
 import { BankFileCard } from "./BankFileCard";
+import { CheckoutCard } from "./CheckoutCard";
 import { CompareCard } from "./CompareCard";
 import { ExportCard } from "./ExportCard";
 import { FilingsCard } from "./FilingsCard";
@@ -37,7 +38,7 @@ class CardBoundary extends Component<{ children: ReactNode; kind: string }, { fa
   }
 }
 
-function CardBody({ card }: { card: Card }) {
+function CardBody({ card, live }: { card: Card; live: boolean }) {
   switch (card.kind) {
     case "route":
       return <RouteCard data={card.data} />;
@@ -55,15 +56,18 @@ function CardBody({ card }: { card: Card }) {
       return <ExportCard data={card.data} />;
     case "compare":
       return <CompareCard data={card.data} />;
+    case "checkout":
+      return <CheckoutCard data={card.data} live={live} />;
     default:
       return null;
   }
 }
 
-export function CardView({ card }: { card: Card }) {
+/** `live`: the card arrived in a reply that is still streaming (the checkout animates only then). */
+export function CardView({ card, live = false }: { card: Card; live?: boolean }) {
   return (
     <CardBoundary kind={card.kind}>
-      <CardBody card={card} />
+      <CardBody card={card} live={live} />
     </CardBoundary>
   );
 }

@@ -312,6 +312,37 @@ export const IconScale = (p: IconProps) => (
   </Svg>
 );
 
+export const IconAt = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
+  </Svg>
+);
+
+export const IconMail = (p: IconProps) => (
+  <Svg {...p}>
+    <rect width="19" height="15" x="2.5" y="4.5" rx="2.5" />
+    <path d="m21.5 7.5-8.4 5.4a2 2 0 0 1-2.2 0L2.5 7.5" />
+  </Svg>
+);
+
+export const IconUserPlus = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20.5v-1A4.5 4.5 0 0 1 7 15h4a4.5 4.5 0 0 1 4.5 4.5v1" />
+    <path d="M19 8v6" />
+    <path d="M22 11h-6" />
+  </Svg>
+);
+
+export const IconLogOut = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3H9" />
+    <path d="m16 17 5-5-5-5" />
+    <path d="M21 12H9" />
+  </Svg>
+);
+
 /** A thin ring with a moving arc; static under reduced motion. */
 export function Spinner({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (

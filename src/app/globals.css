@@ -309,6 +309,107 @@
   animation-duration: 0.8s;
 }
 
+/* Checkout: saved details "autofill" field by field (a light sweep), then the receipt pops in. */
+@keyframes atlas-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes atlas-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.atlas-autofill {
+  position: relative;
+  overflow: hidden;
+}
+.atlas-autofill > * {
+  animation: atlas-fade 260ms ease-out both;
+  animation-delay: inherit;
+}
+.atlas-autofill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 18%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: atlas-sweep 520ms ease-out both;
+  animation-delay: inherit;
+}
+
+.atlas-pop {
+  animation: atlas-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* ---------- sign-in: a bottom sheet on phones, a centred card from 640px ---------- */
+
+@keyframes atlas-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.atlas-modal {
+  position: fixed;
+  inset: auto 0 0 0;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--sat) - 1.5rem);
+  padding: 0 0 var(--sab);
+  border: 0;
+  border-radius: 22px 22px 0 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--elev-float);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.atlas-modal[open] {
+  animation: atlas-sheet-in 280ms cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+}
+
+.atlas-modal::backdrop {
+  background: rgb(16 24 40 / 0.42);
+  animation: atlas-fade 200ms ease-out both;
+}
+
+@media (min-width: 640px) {
+  .atlas-modal {
+    inset: 0;
+    margin: auto;
+    width: min(440px, calc(100vw - 2rem));
+    height: fit-content;
+    padding: 0;
+    border-radius: 22px;
+  }
+  .atlas-modal[open] {
+    animation: atlas-modal-in 220ms cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+  }
+}
+
 /* ---------- tracker sheet: a bottom sheet on phones, a side drawer from 768px ---------- */
 
 .atlas-sheet {

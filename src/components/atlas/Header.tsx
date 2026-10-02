@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { Health } from "./store";
-import { IconMore, IconPhone, IconRefresh, IconShare } from "./icons";
+import { IconChevronDown, IconLogOut, IconMore, IconPhone, IconRefresh, IconShare } from "./icons";
+import { initialsOf, type Identity } from "./identity";
 import { useInstall } from "./pwa";
 import { Dot, cx } from "./ui";
 
@@ -39,7 +40,21 @@ interface MenuItem {
 }
 
 /** A small disclosure menu: Escape and outside taps close it; focus returns to the button. */
-function OverflowMenu({ items, hint, className }: { items: MenuItem[]; hint?: ReactNode; className?: string }) {
+function OverflowMenu({
+  items,
+  hint,
+  heading,
+  trigger,
+  label = "More",
+  className,
+}: {
+  items: MenuItem[];
+  hint?: ReactNode;
+  heading?: ReactNode;
+  trigger?: ReactNode;
+  label?: string;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -73,20 +88,26 @@ function OverflowMenu({ items, hint, className }: { items: MenuItem[]; hint?: Re
       <button
         ref={btnRef}
         type="button"
-        aria-label="More"
+        aria-label={label}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
-        className="grid size-11 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
+        className={cx(
+          "rounded-full text-ink transition-colors",
+          trigger
+            ? "flex h-10 items-center gap-2 border border-line bg-surface pl-1 pr-2.5 hover:border-accent"
+            : "grid size-11 place-items-center hover:bg-surface",
+        )}
       >
-        <IconMore size={20} />
+        {trigger ?? <IconMore size={20} />}
       </button>
       {open ? (
         <div
           ref={panelRef}
           id={id}
-          className="atlas-fade absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-2xl border border-line bg-surface p-1.5 shadow-float"
+          className="atlas-fade absolute right-0 top-[calc(100%+6px)] z-40 w-72 rounded-2xl border border-line bg-surface p-1.5 shadow-float"
         >
+          {heading ? <div className="mb-1 border-b border-line px-3 pb-2.5 pt-2 text-[13px] leading-snug text-muted">{heading}</div> : null}
           {items.map((item) => (
             <button
               key={item.key}
@@ -108,8 +129,30 @@ function OverflowMenu({ items, hint, className }: { items: MenuItem[]; hint?: Re
   );
 }
 
-export function Header({ health, onReset }: { health: Health; onReset: () => void }) {
+function AccountHeading({ user }: { user: Identity }) {
+  return (
+    <span className="block">
+      Signed in as <span className="font-medium text-ink [overflow-wrap:anywhere]">{user.email}</span>{" "}
+      <span className="whitespace-nowrap text-gold-ink">(sandbox)</span>
+    </span>
+  );
+}
+
+export function Header({
+  health,
+  onReset,
+  user,
+  onSignOut,
+}: {
+  health: Health;
+  onReset: () => void;
+  user: Identity | null;
+  onSignOut: () => void;
+}) {
   const { canInstall, iosHint, install } = useInstall();
+  const signOutItem: MenuItem[] = user
+    ? [{ key: "signout", label: "Sign out", icon: <IconLogOut size={18} />, onSelect: onSignOut }]
+    : [];
   const installItem: MenuItem[] = canInstall
     ? [{ key: "install", label: "Install app", icon: <IconPhone size={18} />, onSelect: () => void install() }]
     : [];
@@ -137,6 +180,23 @@ export function Header({ health, onReset }: { health: Health; onReset: () => voi
         </span>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <HealthBadge health={health} />
+          {user ? (
+            <OverflowMenu
+              className="hidden sm:block"
+              label={`Account: ${user.name}`}
+              trigger={
+                <>
+                  <span className="grid size-8 place-items-center rounded-full bg-accent text-[12.5px] font-semibold text-white">
+                    {initialsOf(user.name)}
+                  </span>
+                  <span className="max-w-[9rem] truncate text-[14px] font-medium">{user.name.split(" ")[0]}</span>
+                  <IconChevronDown size={15} className="text-muted" />
+                </>
+              }
+              heading={<AccountHeading user={user} />}
+              items={signOutItem}
+            />
+          ) : null}
           <button
             type="button"
             onClick={onReset}
@@ -147,7 +207,8 @@ export function Header({ health, onReset }: { health: Health; onReset: () => voi
           </button>
           <OverflowMenu
             className="sm:hidden"
-            items={[{ key: "reset", label: "Reset demo", icon: <IconRefresh size={18} />, onSelect: onReset }, ...installItem]}
+            heading={user ? <AccountHeading user={user} /> : undefined}
+            items={[{ key: "reset", label: "Reset demo", icon: <IconRefresh size={18} />, onSelect: onReset }, ...signOutItem, ...installItem]}
             hint={hint}
           />
           {installItem.length || hint ? <OverflowMenu className="hidden sm:block" items={installItem} hint={hint} /> : null}

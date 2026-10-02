@@ -3,16 +3,19 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { AgentAction } from "@/lib/atlas/types";
 import type { Attachment } from "@/lib/atlas/attachments";
+import { PERSONAS, type Persona, type PersonaId } from "@/lib/atlas/personas";
 import { aed } from "@/lib/atlas/format";
 import { ChatScroller } from "./ChatScroller";
 import { Composer, type ComposerHandle } from "./Composer";
 import { AtlasUiProvider, type AtlasUi } from "./context";
 import { Header } from "./Header";
+import { personaName, setIdentity, useIdentity } from "./identity";
 import { IconChevronUp, IconPaperclip, IconPanel, IconX } from "./icons";
 import { derive, exportCase, isPartialPrice } from "./live";
 import { MessageView } from "./Message";
 import type { UiMessage } from "./session";
 import { Sheet } from "./Sheet";
+import { SignInDialog } from "./SignInDialog";
 import { STORAGE_KEY } from "./storage";
 import { getAtlasStore, useAtlasSession } from "./store";
 import { TimeControls, TrackerPanel } from "./Tracker";
@@ -118,6 +121,37 @@ function AtlasShell() {
   );
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const stored = useIdentity();
+  // Shown exactly as the persona introduces itself, whatever an older save held.
+  const user = useMemo(() => {
+    if (!stored) return null;
+    const persona = PERSONAS.find((p) => p.id === stored.personaId);
+    return persona ? { name: personaName(persona), email: persona.email, personaId: persona.id } : stored;
+  }, [stored]);
+  const [signInFor, setSignInFor] = useState<Persona | null>(null);
+
+  // A persona card asks for the sandbox sign-in first, unless that account is already signed in.
+  const pickPersona = useCallback(
+    (id: PersonaId) => {
+      const persona = PERSONAS.find((p) => p.id === id);
+      if (!persona) return;
+      if (user?.personaId === id) store.startPersona(id);
+      else setSignInFor(persona);
+    },
+    [store, user],
+  );
+  const onSignedIn = useCallback(
+    (persona: Persona) => {
+      setIdentity({ name: personaName(persona), email: persona.email, personaId: persona.id });
+      setSignInFor(null);
+      store.startPersona(persona.id);
+    },
+    [store],
+  );
+  const onSignOut = useCallback(() => {
+    setIdentity(null);
+    store.reset();
+  }, [store]);
   const [dragging, setDragging] = useState(false);
   const composerRef = useRef<ComposerHandle>(null);
 
@@ -179,7 +213,7 @@ function AtlasShell() {
   return (
     <AtlasUiProvider value={ui}>
       <div className="atlas-app flex flex-col overflow-hidden bg-paper">
-        <Header health={snap.health} onReset={store.reset} />
+        <Header health={snap.health} onReset={store.reset} user={user} onSignOut={onSignOut} />
         <div className="flex min-h-0 flex-1">
           <main
             className="relative flex min-w-0 flex-1 flex-col"
@@ -202,7 +236,7 @@ function AtlasShell() {
             {snap.ready ? (
               <ChatScroller anchorId={lastUserId}>
                 {messages.length === 0 ? (
-                  <Welcome onPick={store.startPersona} disabled={busy} />
+                  <Welcome onPick={pickPersona} disabled={busy} />
                 ) : (
                   <section aria-label="Conversation" className="mx-auto w-full max-w-[760px] space-y-7 px-4 pb-8 pt-6 sm:px-6">
                     <h1 className="sr-only">Atlas71 conversation</h1>
@@ -298,6 +332,7 @@ function AtlasShell() {
         <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} labelledBy="tracker-sheet-title">
           {tracker("tracker-sheet-title")}
         </Sheet>
+        {signInFor ? <SignInDialog persona={signInFor} onClose={() => setSignInFor(null)} onSignedIn={onSignedIn} /> : null}
         {snap.canUndo ? <UndoToast onUndo={store.undoReset} onDismiss={store.dismissUndo} /> : null}
       </div>
     </AtlasUiProvider>
