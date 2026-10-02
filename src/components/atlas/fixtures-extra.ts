@@ -1,8 +1,9 @@
 // Extra gallery fixtures (dev only): the passport details card, all valid and with a warning, and the
 // pre-payment states (details still being collected, and the final review with Confirm & pay unlocked).
-import type { CaseState, IdentityCardData, PriceCardData } from "@/lib/atlas/types";
-import { provideInput, quote, sandboxIdentities, saveIdentities } from "@/lib/atlas/engine";
+import type { CaseState, DocumentsCardData, IdentityCardData, PriceCardData } from "@/lib/atlas/types";
+import { documentsCard, provideInput, quote, sandboxIdentities, saveIdentities } from "@/lib/atlas/engine";
 import { applyProfile } from "@/lib/atlas/profile";
+import { SANDBOX_INVESTOR_DOCS } from "@/lib/atlas/personas";
 import { stateUnpaid } from "./fixtures";
 
 const USED_FOR = [
@@ -109,3 +110,6 @@ export const stateReadyToPay: CaseState = (() => {
 
 /** Routely's current quote, so the pre-payment price cards match the live case (not "out of date"). */
 export const priceCardLive: PriceCardData = quote(stateUnpaid)!;
+
+/** Meera's uploaded investor documents, as the card shows them. */
+export const documentsCardRoutely: DocumentsCardData = documentsCard(SANDBOX_INVESTOR_DOCS.routely!);

@@ -32,6 +32,8 @@ export function cardNote(card: Card): string {
       return `(shown: sandbox checkout, paid ${aed(card.data.amountAed)} with test card ending ${card.data.method.last4}, receipt ${card.data.receipt})`;
     case "identity":
       return `(shown: passport details card, ${card.data.people.length} on file${card.data.missing.length ? `, missing: ${card.data.missing.join(", ")}` : ""})`;
+    case "documents":
+      return `(shown: investor documents card, read ${card.data.files.join(", ")}: ${card.data.facts.map((f) => `${f.label} ${f.value}`).join("; ")})`;
     case "compare":
       return `(shown: Abu Dhabi vs ${card.data.homeLabel} comparison: ${card.data.verdict})`;
   }

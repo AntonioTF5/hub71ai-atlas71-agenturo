@@ -3,6 +3,7 @@
 import type { CaseState, PlanCardData, PriceCardData } from "@/lib/atlas/types";
 import { buildPlan, dayNumber, payChecklist, priceIsPartial, quote, waitingOn, type PayCheck } from "@/lib/atlas/engine";
 import { buildJsonPack, buildMarkdownPack, packFileName } from "@/lib/atlas/export";
+import { buildZipPack, zipFileName } from "@/lib/atlas/pack";
 import type { ExportFile } from "./context";
 
 function safe<T>(fn: () => T, fallback: T): T {
@@ -36,12 +37,14 @@ export function isPartialPrice(card: PriceCardData): boolean {
   return safe(() => priceIsPartial(card), false);
 }
 
-export function exportCase(state: CaseState, ext: "md" | "json"): ExportFile | null {
+export function exportCase(state: CaseState, ext: "md" | "json" | "zip"): ExportFile | null {
   return safe(
     () =>
-      ext === "md"
-        ? { name: packFileName(state, "md"), body: buildMarkdownPack(state), type: "text/markdown;charset=utf-8" }
-        : { name: packFileName(state, "json"), body: buildJsonPack(state), type: "application/json;charset=utf-8" },
+      ext === "zip"
+        ? { name: zipFileName(state), body: buildZipPack(state), type: "application/zip" }
+        : ext === "md"
+          ? { name: packFileName(state, "md"), body: buildMarkdownPack(state), type: "text/markdown;charset=utf-8" }
+          : { name: packFileName(state, "json"), body: buildJsonPack(state), type: "application/json;charset=utf-8" },
     null,
   );
 }

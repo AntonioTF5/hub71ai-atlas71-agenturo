@@ -67,6 +67,37 @@ export const SANDBOX_PASSPORTS: Record<PersonaId, SandboxPassport[]> = {
   ],
 };
 
+/** Fictional investor documents a demo founder has "uploaded" for the sandbox fast-track ("use my uploaded investor docs"). */
+export interface SandboxInvestorDocs {
+  files: string[];
+  investor: string;
+  amountUsd: number;
+  instrument: string;
+  stake: string;
+  /** Founder split on the cap table, before the SAFE converts. */
+  capTable: { holder: string; pct: number }[];
+  fundingSource: string;
+  ownership: string;
+}
+
+export const SANDBOX_INVESTOR_DOCS: Partial<Record<PersonaId, SandboxInvestorDocs>> = {
+  routely: {
+    files: ["Routely_a16z_Post-Money_SAFE.pdf", "Routely_Cap_Table_Sep-2026.pdf"],
+    investor: "Andreessen Horowitz (a16z)",
+    amountUsd: 600_000,
+    instrument: "Post-money SAFE, seed",
+    stake: "10% on conversion",
+    capTable: [
+      { holder: "Meera Iyer", pct: 45 },
+      { holder: "Arjun Rao", pct: 45 },
+      { holder: "Andreessen Horowitz (a16z), post-money SAFE", pct: 10 },
+    ],
+    fundingSource: "USD 600,000 seed from Andreessen Horowitz (a16z), invested through a post-money SAFE for 10% of Routely",
+    ownership:
+      "Routely will own 100% of the ADGM company. Routely's cap table: Meera Iyer 45%, Arjun Rao 45%, and Andreessen Horowitz (a16z) 10% on conversion of its post-money SAFE",
+  },
+};
+
 export function emptyProfile(): Profile {
   return {
     company: null,

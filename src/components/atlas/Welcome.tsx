@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { PERSONAS, type PersonaId } from "@/lib/atlas/personas";
-import { IconArrowRight } from "./icons";
+import { IconArrowRight, IconSparkle } from "./icons";
+import { cx } from "./ui";
 
 function initials(name: string): string {
   return name
@@ -14,29 +14,69 @@ function initials(name: string): string {
     .join("");
 }
 
+/** The journey, in the order Atlas71 runs it. Each stop carries the promise that makes it different. */
+const ROUTE = [
+  { stop: "Decide", what: "Abu Dhabi against your home city, every number sourced" },
+  { stop: "Plan", what: "Your licence route, dated step by step" },
+  { stop: "Pay last", what: "One all-in price, paid once every detail is in" },
+  { stop: "Land", what: "Licence, visas and bank account, filed with your OK" },
+];
+
 const PROVIDERS = ["Hub71", "ADGM", "ICP", "SEHA", "Wio", "FTA", "Stripe"];
+
+/** A brand or product name: kept as written by machine translation. */
+function Name({ children }: { children: string }) {
+  return (
+    <span translate="no" className="font-medium text-ink">
+      {children}
+    </span>
+  );
+}
 
 export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void; disabled?: boolean }) {
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col px-4 pb-8 pt-[clamp(1.75rem,7vh,5rem)] sm:px-6">
-      <Image
-        src="/brand/atlas71-mark.png"
-        width={72}
-        height={72}
-        alt=""
-        loading="eager"
-        className="atlas-rise size-16 sm:size-[72px]"
-      />
-      <h1 className="atlas-rise mt-5 text-balance text-[36px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink [animation-delay:60ms] sm:text-[54px]">
-        Land your startup in Abu&nbsp;Dhabi.
+    <div className="mx-auto flex w-full max-w-[760px] flex-col px-4 pb-8 pt-[clamp(1.5rem,6vh,4rem)] sm:px-6">
+      <h1 className="atlas-rise text-balance text-[34px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[54px]">
+        Should your startup move to Abu&nbsp;Dhabi?
       </h1>
-      <p className="atlas-rise mt-4 max-w-[56ch] text-pretty text-[17px] leading-relaxed text-muted [animation-delay:120ms] sm:text-[19px]">
-        Tell Atlas71 what you build and who&apos;s moving. It picks your route, shows every step with dates, quotes one price, and
-        files everything.
+      <p className="atlas-rise mt-4 max-w-[58ch] text-pretty text-[17px] leading-relaxed text-muted [animation-delay:60ms] sm:text-[19px]">
+        Atlas71 answers with sourced numbers. If it’s a yes, it picks your licence, prices the whole move and files
+        the paperwork. <span className="font-medium text-ink">Ask anything on the way.</span>
       </p>
 
+      {/* The signature: one dashed route from the question to the landing. Vertical on phones, a line across from 640px. */}
+      <ol
+        aria-label="How Atlas71 works"
+        className="atlas-rise mt-8 grid gap-4 [animation-delay:120ms] sm:mt-10 sm:grid-cols-4 sm:gap-6"
+      >
+        {ROUTE.map((r, i) => {
+          const last = i === ROUTE.length - 1;
+          return (
+            <li key={r.stop} className="relative pl-7 sm:pl-0 sm:pt-6">
+              <span
+                aria-hidden="true"
+                className={cx(
+                  "absolute left-0 top-[3px] size-3 rounded-full border-2 border-accent sm:top-0",
+                  last ? "bg-accent" : "bg-paper",
+                )}
+              />
+              {last ? null : (
+                <span
+                  aria-hidden="true"
+                  className="absolute -bottom-[15px] left-[5px] top-[19px] border-l-2 border-dashed border-line-strong sm:-right-5 sm:bottom-auto sm:left-4 sm:top-[5px] sm:border-l-0 sm:border-t-2"
+                />
+              )}
+              <p className="font-mono text-[12px] font-medium uppercase leading-[18px] tracking-[0.08em] text-accent-ink">
+                {r.stop}
+              </p>
+              <p className="mt-1 text-pretty text-[15px] leading-snug text-ink">{r.what}</p>
+            </li>
+          );
+        })}
+      </ol>
+
       <div className="atlas-rise mt-8 [animation-delay:180ms] sm:mt-10">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">Try a founder</p>
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">Try a demo founder</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {PERSONAS.map((p) => (
             <button
@@ -44,22 +84,23 @@ export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void;
               type="button"
               disabled={disabled}
               onClick={() => onPick(p.id)}
-              className="group flex w-full items-start gap-4 rounded-card border border-line bg-surface p-4 text-left shadow-card transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-60 sm:p-5"
+              className="group flex w-full items-center gap-3.5 rounded-card border border-line bg-surface p-4 text-left shadow-card transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:hover:translate-y-0"
             >
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent-soft text-[15px] font-semibold text-accent-ink">
+              <span
+                aria-hidden="true"
+                className="grid size-11 shrink-0 place-items-center rounded-full bg-accent-soft text-[15px] font-semibold text-accent-ink"
+              >
                 {initials(p.founderName || p.founder)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center justify-between gap-3">
-                  <span className="text-[18px] font-semibold leading-tight text-ink">{p.name}</span>
-                  <IconArrowRight
-                    size={18}
-                    className="shrink-0 text-muted transition-[transform,color] duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
-                  />
-                </span>
-                <span className="mt-1 block text-[14.5px] leading-snug text-muted">{p.tagline}</span>
-                <span className="mt-3 block text-[13.5px] font-medium text-ink">{p.founder}</span>
+                <span className="block text-[17px] font-semibold leading-tight text-ink">{p.name}</span>
+                <span className="mt-1 block text-[14px] leading-snug text-muted">{p.tagline}</span>
+                <span className="mt-1.5 block text-[13px] font-medium text-ink/80">{p.founder}</span>
               </span>
+              <IconArrowRight
+                size={18}
+                className="shrink-0 text-muted transition-[transform,color] duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
+              />
             </button>
           ))}
         </div>
@@ -68,13 +109,36 @@ export function Welcome({ onPick, disabled }: { onPick: (id: PersonaId) => void;
       <p className="atlas-rise mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted [animation-delay:240ms]">
         <span>Files with</span>
         {PROVIDERS.map((name, i) => (
-          <span key={name} className="font-medium text-ink/80">
+          <span key={name} translate="no" className="font-medium text-ink/80">
             {name}
-            {i < PROVIDERS.length - 1 ? <span className="ml-2 text-line-strong">·</span> : null}
+            {i < PROVIDERS.length - 1 ? (
+              <span aria-hidden="true" className="ml-2 text-line-strong">
+                ·
+              </span>
+            ) : null}
           </span>
         ))}
         <span className="text-gold-ink">· sandbox</span>
       </p>
     </div>
+  );
+}
+
+/** Under the composer on the landing: the frontier AI that does the forms for the founder. */
+export function FrontierLine() {
+  return (
+    <p className="mx-auto mt-2 max-w-[760px] text-balance text-center text-[12.5px] leading-snug text-muted">
+      <IconSparkle size={14} className="mr-1.5 inline-block align-[-2px] text-accent" />
+      <span>
+        Frontier AI does the forms for you
+        <span className="block sm:hidden">
+          <Name>GPT-6.1 Sol</Name> · <Name>TypeSafe</Name> · <Name>Tavily</Name>
+        </span>
+        <span className="hidden sm:inline">
+          : <Name>GPT-6.1 Sol</Name> reasons through your case, <Name>TypeSafe</Name> fact-checks every answer in about
+          150&nbsp;ms and <Name>Tavily</Name> reads official pages live.
+        </span>
+      </span>
+    </p>
   );
 }

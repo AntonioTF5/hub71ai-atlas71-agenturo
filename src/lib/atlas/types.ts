@@ -122,6 +122,13 @@ export interface IdentityCardData {
   usedFor: string[];                     // the filings these details pre-fill
   sandbox: boolean;
 }
+// Added after the spec (user request, 2 Oct): investor documents a demo founder uploaded, read for the bank file.
+export interface DocumentsCardData {
+  files: string[];                       // the documents read, by file name
+  facts: { label: string; value: string }[];   // what Atlas71 read from them
+  usedFor: string[];                     // where those facts go
+  sandbox: boolean;
+}
 // Added after the spec (user request, 2 Oct): the "does Abu Dhabi fit your business and life?" comparison.
 export type CompareTopic = "taxes" | "opportunities" | "residency" | "work" | "costs";
 export interface CompareRow { topic: CompareTopic; label: string; abuDhabi: string; home: string; edge: "abu_dhabi" | "home" | "even"; matters?: boolean; sourceIds: string[] }
@@ -143,7 +150,8 @@ export type Card =
   | { kind: "export"; data: { generatedOn: string } }
   | { kind: "compare"; data: CompareCardData }
   | { kind: "checkout"; data: CheckoutCardData }
-  | { kind: "identity"; data: IdentityCardData };
+  | { kind: "identity"; data: IdentityCardData }
+  | { kind: "documents"; data: DocumentsCardData };
 
 // ---------- Chat + stream protocol ----------
 export type MessagePart =

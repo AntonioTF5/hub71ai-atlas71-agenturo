@@ -6,6 +6,7 @@ import { IconAlert } from "../icons";
 import { BankFileCard } from "./BankFileCard";
 import { CheckoutCard } from "./CheckoutCard";
 import { CompareCard } from "./CompareCard";
+import { DocumentsCard } from "./DocumentsCard";
 import { ExportCard } from "./ExportCard";
 import { FilingsCard } from "./FilingsCard";
 import { IdentityCard } from "./IdentityCard";
@@ -61,6 +62,8 @@ function CardBody({ card, live }: { card: Card; live: boolean }) {
       return <CheckoutCard data={card.data} live={live} />;
     case "identity":
       return <IdentityCard data={card.data} />;
+    case "documents":
+      return <DocumentsCard data={card.data} />;
     default:
       return null;
   }
