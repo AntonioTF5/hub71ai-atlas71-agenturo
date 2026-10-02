@@ -1,6 +1,7 @@
 import type OpenAI from "openai";
 import { AGENT_MODEL, llm, modelParams } from "@/lib/llm";
 import type { AgentAction, AgentRequest, StreamEvent } from "@/lib/atlas/types";
+import { checkScope, declineEvents, shouldCheckScope } from "@/lib/atlas/scope";
 import { normalizeState } from "@/lib/atlas/engine";
 import { localToday } from "@/lib/atlas/format";
 import { casePrompt, STATIC_PROMPT } from "@/lib/atlas/prompt";
@@ -373,6 +374,21 @@ export async function POST(req: Request) {
       };
       let answered = false;
       try {
+        // Scope guard: off-topic messages get a short decline and never reach the model or its web tools.
+        const lastMessage = history[history.length - 1];
+        if (
+          lastMessage?.role === "user" &&
+          shouldCheckScope(lastMessage.content, { hasFiles: files.length > 0, hasAction: !!ctx.action })
+        ) {
+          const scope = await checkScope(history, ctx.state);
+          if (scope.offTopic) {
+            console.log(`scope: declined (p=${scope.p?.toFixed(2)}, ${scope.latencyMs} ms)`);
+            for (const e of declineEvents(ctx.state)) send(e);
+            send({ t: "state", state: ctx.state });
+            answered = !req.signal.aborted;
+            return;
+          }
+        }
         await runAgent(ctx, withAttachments(history, files), send, req.signal);
         answered = !req.signal.aborted;
       } catch (err) {

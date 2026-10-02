@@ -44,6 +44,7 @@ The agent (`src/lib/atlas/tools.ts`) is a bounded tool-calling loop: 8 turns, a 
 - `web_search`, `fetch_url`: live web through Tavily, with official-source preference and untrusted-content handling.
 - `offer_choices`: tappable answers, so the conversation is mostly taps on mobile.
 - `export_pack`: downloads the landing pack (Markdown) and the case file (JSON).
+- **Scope-locked by a soul file.** `SOUL.md` defines the agent's identity, voice, boundaries, scenarios and examples (an 8-chapter soul, built into the system prompt by `npm run soul`). A TypeSafe scope check also stops off-topic requests (crypto prices, trivia, role-play) before they reach the model or its web tools, so the agent stays on the relocation job.
 
 ## Why it's different
 
@@ -109,5 +110,6 @@ Developed and owned by **Anton Agafonov**. Released under the [Apache License 2.
 - `src/lib/atlas/engine.ts`: the deterministic engine (route rules, dated plan, one price, filing simulator, consent and identity gating).
 - `src/lib/atlas/kb.ts`, `compare.ts`, `places.ts`: the sourced knowledge base and the home-base comparison.
 - `src/lib/atlas/checks.ts`: the TypeSafe question batches.
+- `SOUL.md`, `scripts/build-soul.mjs`, `src/lib/atlas/scope.ts`: the agent's soul file, its build step, and the scope guard.
 - `src/lib/atlas/tools.ts`, `prompt.ts`, `src/app/api/agent/route.ts`: the agent loop, its tools and prompt.
 - `src/components/atlas/*`: the chat UI, cards, tracker, composer, voice and file input.

@@ -6,11 +6,15 @@
   "license": "Apache-2.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/build-soul.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/build-soul.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mts"
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mts",
+    "soul": "node scripts/build-soul.mjs",
+    "pretest": "node scripts/build-soul.mjs"
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0",
