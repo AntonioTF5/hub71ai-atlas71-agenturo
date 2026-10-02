@@ -447,6 +447,43 @@ export function monthsValid(today: string, expiry: string): number {
   return m;
 }
 
+/** UAE residence visas need a passport valid for at least this many months (see the passport source in kb.ts). */
+export const MIN_PASSPORT_MONTHS = 6;
+
+/** Atlas71 files a residence visa for movers and family members; a founder who stays only signs the incorporation. */
+function needsResidenceVisa(state: CaseState, subjectId: string): boolean {
+  return state.profile.dependants.some((d) => d.id === subjectId) || relocating(state.profile).some((p) => p.id === subjectId);
+}
+
+/** Why a saved passport can't be used for its filings yet, or undefined when it can. */
+export function passportProblem(state: CaseState, id: IdentityDetails): string | undefined {
+  if (needsResidenceVisa(state, id.subjectId)) {
+    return monthsValid(state.today, id.passportExpiry) >= MIN_PASSPORT_MONTHS
+      ? undefined
+      : `Passport must be valid for ${MIN_PASSPORT_MONTHS}+ months for a residence visa; renew it first.`;
+  }
+  return id.passportExpiry > state.today ? undefined : "Passport has expired; renew it first.";
+}
+
+// ---------- family certificates ----------
+
+/** The documents input when the founder said a certificate isn't legalised yet. */
+export const DOCS_NOT_YET = "not_yet";
+
+/** An answer (or a reading of an attached certificate) that says it isn't legalised or ready yet. */
+const NOT_LEGALISED =
+  /^\s*(no|not|nope|none|nothing|later)\b|\bnot (yet|ready|legali[sz]ed)\b|\bun-?legali[sz]ed\b|\bno (uae |embassy |mofa )*(legali[sz]ation|stamp)\b|\bneeds? (to be )?legali[sz]/i;
+
+/** True once the founder has confirmed (or attached) this dependant's legalised certificate. */
+export function documentsReady(state: CaseState, dependantId: string | undefined): boolean {
+  const v = state.inputs[`documents:${dependantId ?? ""}`];
+  return !!v && v !== DOCS_NOT_YET;
+}
+
+function certificateFor(d: Dependant): string {
+  return d.relation === "child" ? "birth certificate" : "marriage certificate";
+}
+
 /** The persona's fictional saved passports, matched to the case's people and dependants by first name. */
 export function sandboxIdentities(state: CaseState): IdentityDetails[] {
   const book = state.persona ? SANDBOX_PASSPORTS[state.persona] : [];
@@ -480,9 +517,6 @@ export function saveIdentities(input: CaseState, entries: IdentityDetails[]): Si
   return fileReady(state);
 }
 
-/** UAE residence visas need a passport valid for at least this many months (see the passport source in kb.ts). */
-export const MIN_PASSPORT_MONTHS = 6;
-
 export function identityCard(state: CaseState): IdentityCardData {
   const route = state.route;
   const subjects = kycSubjects(state);
@@ -490,15 +524,8 @@ export function identityCard(state: CaseState): IdentityCardData {
   for (const s of subjects) {
     const id = state.identities?.[s.id];
     if (!id) continue;
-    const validMonths = monthsValid(state.today, id.passportExpiry);
-    const ok = validMonths >= MIN_PASSPORT_MONTHS;
-    people.push({
-      ...id,
-      who: s.who,
-      validMonths,
-      ok,
-      note: ok ? undefined : `Passport must be valid for ${MIN_PASSPORT_MONTHS}+ months for a residence visa; renew it first.`,
-    });
+    const note = passportProblem(state, id);
+    people.push({ ...id, who: s.who, validMonths: monthsValid(state.today, id.passportExpiry), ok: !note, note });
   }
   const zone = route === "masdar" ? "Masdar City Free Zone" : "ADGM Registration Authority";
   const gs = route === "masdar" ? "Masdar City FZ and ICP" : "ADGM Government Services and ICP";
@@ -535,7 +562,7 @@ function inputMissing(state: CaseState, inst: StepInstance): boolean {
     case "medical":
       return !state.inputs[`medical:${inst.subjectId}`];
     case "dependant_visa":
-      return !state.inputs[`documents:${inst.subjectId}`] || !state.identities?.[inst.subjectId ?? ""];
+      return !documentsReady(state, inst.subjectId) || !state.identities?.[inst.subjectId ?? ""];
     case "bank_file":
       return (
         bankFactsMissing(state.profile) ||
@@ -616,7 +643,11 @@ function stepNote(state: CaseState, route: RouteId, inst: StepInstance, status: 
           ? `Slot: ${state.inputs[`medical:${inst.subjectId}`]}`
           : undefined;
     case "dependant_visa":
-      return state.inputs[`documents:${inst.subjectId}`] ? "Documents received." : base;
+      return documentsReady(state, inst.subjectId)
+        ? "Documents received."
+        : state.inputs[`documents:${inst.subjectId}`] === DOCS_NOT_YET
+          ? "Certificate not legalised yet; the visa files once it is."
+          : base;
     case "bank_file": {
       if (status === "done") return "Prepared for bank review.";
       const missing = missingFacts(state).bank.map((k) => SHORT_FACT[k] ?? k);
@@ -654,6 +685,10 @@ export function buildPlan(state: CaseState): PlanCardData | null {
       const bestEnd = maxDate(addDays(f.filedOn, bestDays), today);
       const typicalEnd = maxDate(addDays(f.filedOn, typicalDays), bestEnd);
       win[inst.id] = { best: [f.filedOn, bestEnd], typical: [f.filedOn, typicalEnd] };
+    } else if (inst.step === "signatory_entry" && isIsoDate(state.inputs[`entry:${inst.subjectId}`])) {
+      // The founder named the landing day before paying, so the plan uses it instead of a generic window.
+      const on = maxDate(today, state.inputs[`entry:${inst.subjectId}`]);
+      win[inst.id] = { best: [today, on], typical: [today, on] };
     } else {
       const bestStart = maxDate(today, ...inst.deps.map((d) => win[d]?.best[1]));
       const typicalStart = maxDate(today, ...inst.deps.map((d) => win[d]?.typical[1]));
@@ -899,8 +934,8 @@ function needsInputText(state: CaseState, inst: StepInstance): string {
       return withWho("Choose a medical test slot", who);
     case "dependant_visa": {
       const d = state.profile.dependants.find((x) => x.id === inst.subjectId);
-      const cert = d?.relation === "child" ? "legalised birth certificate" : "legalised marriage certificate";
-      const needsDoc = !state.inputs[`documents:${inst.subjectId}`];
+      const cert = `legalised ${d ? certificateFor(d) : "certificate"}`;
+      const needsDoc = !documentsReady(state, inst.subjectId);
       const needsId = !state.identities?.[inst.subjectId ?? ""];
       const what = needsDoc && needsId ? `Passport details and ${cert}` : needsId ? "Passport details" : cert.charAt(0).toUpperCase() + cert.slice(1);
       return `${what} needed for ${who ?? "the dependant visa"}`;
@@ -993,6 +1028,11 @@ export function startLanding(input: CaseState): SimResult & { error?: string } {
   if (!q) return { state: input, filed: [], events: [], error: "No route chosen yet, so there's nothing to pay for." };
   if (priceIsPartial(q)) {
     return { state: input, filed: [], events: [], error: "This route needs a provider quote for visas before payment." };
+  }
+  // Payment comes last: every detail the filings need is collected first, so nothing stalls once it's paid.
+  const open = payChecklist(input).filter((c) => !c.done);
+  if (open.length) {
+    return { state: input, filed: [], events: [], error: `Payment comes last. Still needed first: ${open.map((c) => c.detail).join("; ")}.` };
   }
   const state = clone(input);
   state.paid = { on: state.today, amountAed: q.totalAed };
@@ -1100,10 +1140,18 @@ export function resolveInputKey(state: CaseState, key: string): string | null {
 }
 
 export function provideInput(input: CaseState, key: string, value: string): SimResult & { key?: string; error?: string } {
-  const resolved = resolveInputKey(input, key);
-  if (!resolved) {
-    return { state: input, filed: [], events: [], error: `Unknown input key "${key}". Use consent:hub71_letter, entry:<founderId>, medical:<personId> or documents:<dependantId>.` };
+  // documents:all records one answer for every family member ("they're legalised" / "not yet").
+  const all = /^documents:(all|both|family|everyone)$/i.test(key.trim());
+  const keys = all
+    ? input.profile.dependants.map((d) => `documents:${d.id}`)
+    : [resolveInputKey(input, key)].filter((k): k is string => !!k);
+  if (!keys.length) {
+    const error = all
+      ? "No family members are moving, so there are no certificates to record."
+      : `Unknown input key "${key}". Use consent:hub71_letter, entry:<founderId>, medical:<personId>, documents:<dependantId> or documents:all.`;
+    return { state: input, filed: [], events: [], error };
   }
+  const resolved = keys[0];
   let v = value.trim().slice(0, 200);
   if (!v) return { state: input, filed: [], events: [], error: "The value is empty." };
   if (resolved.startsWith("entry:")) {
@@ -1113,10 +1161,12 @@ export function provideInput(input: CaseState, key: string, value: string): SimR
   }
   // Consent is a yes only when the founder clearly said yes.
   if (resolved.startsWith("consent:")) v = saysYes(v) ? "yes" : "no";
+  // A certificate that isn't legalised yet is an answer, not the document: the dependant visa keeps waiting.
+  if (resolved.startsWith("documents:") && NOT_LEGALISED.test(v)) v = DOCS_NOT_YET;
   const state = clone(input);
-  state.inputs[resolved] = v;
+  for (const k of keys) state.inputs[k] = v;
   const r = fileReady(state);
-  return { ...r, key: resolved };
+  return { ...r, key: keys.join(", ") };
 }
 
 /** Mark the bank file step done once the checks pass, then file whatever it unblocked. */
@@ -1152,16 +1202,6 @@ export interface WaitingItem {
   options?: string[];
 }
 
-function needsHub71Consent(state: CaseState): boolean {
-  return (
-    state.route === "adgm_tsl" &&
-    state.profile.hub71Letter !== "have" &&
-    state.profile.hub71Letter !== "applied" &&
-    state.inputs["consent:hub71_letter"] !== "yes" &&
-    !state.filings.some((f) => f.step === "hub71_letter")
-  );
-}
-
 const CONSENT_OPTIONS = ["Yes, apply for me", "Not yet"];
 
 /**
@@ -1179,21 +1219,163 @@ export function saysYes(text: string): boolean {
 
 const IDENTITY_OPTIONS = ["Use my saved passports", "I'll upload photos"];
 
+// ---------- before payment: payment comes last ----------
+
+export interface PayCheck {
+  /** What answers it: consent:hub71_letter, identity, entry:<founderId>, documents, bank. */
+  key: string;
+  /** The topic, e.g. "Passports". */
+  label: string;
+  done: boolean;
+  /** What's on file when done; otherwise what's still needed, worded for "Waiting on you". */
+  detail: string;
+  options?: string[];
+}
+
+/**
+ * Everything the founder supplies before Confirm & pay, in the order Atlas71 asks for it: the Hub71 OK,
+ * passports, the signatory's first UAE entry, the family certificates and the bank facts. Payment is the
+ * last step, so once it's made the filings only wait on the authorities, a medical slot, or a certificate
+ * the founder said isn't legalised yet.
+ */
+export function payChecklist(state: CaseState): PayCheck[] {
+  const route = state.route;
+  if (!isRoute(route)) return [];
+  const p = state.profile;
+  const out: PayCheck[] = [];
+
+  if (route === "adgm_tsl") {
+    const consent = state.inputs["consent:hub71_letter"];
+    const item = (done: boolean, detail: string, options?: string[]): PayCheck => ({
+      key: "consent:hub71_letter",
+      label: "Hub71 letter",
+      done,
+      detail,
+      ...(options ? { options } : {}),
+    });
+    out.push(
+      p.hub71Letter === "have"
+        ? item(true, "You have it; Atlas71 attaches it to the ADGM file")
+        : p.hub71Letter === "applied"
+          ? item(true, "You've applied; Atlas71 tracks it")
+          : consent === "yes"
+            ? item(true, "You asked Atlas71 to apply")
+            : consent === "no"
+              ? item(false, "The startup licence needs the Hub71 letter: approve the application, or switch to the standard ADGM licence", [
+                  "Yes, apply for me",
+                  "Switch to the standard licence",
+                ])
+              : item(false, "Approve the Hub71 eligibility letter application", CONSENT_OPTIONS),
+    );
+  }
+
+  const subjects = kycSubjects(state);
+  if (subjects.length) {
+    const missing = identityMissingFor(state, subjects);
+    const renew = subjects.filter((s) => {
+      const id = state.identities?.[s.id];
+      return !!id && !!passportProblem(state, id);
+    });
+    out.push(
+      missing.length
+        ? { key: "identity", label: "Passports", done: false, detail: `Passport details for ${joinAnd(missing.map((x) => x.who))}`, options: IDENTITY_OPTIONS }
+        : renew.length
+          ? { key: "identity", label: "Passports", done: false, detail: `A renewed passport for ${joinAnd(renew.map((x) => x.who))}: the one on file expires too soon` }
+          : { key: "identity", label: "Passports", done: true, detail: `On file for ${joinAnd(subjects.map((x) => x.who))}` },
+    );
+  }
+
+  const sig = route === "masdar" ? undefined : signatoryOf(p);
+  if (sig) {
+    const key = `entry:${sig.id}`;
+    const on = state.inputs[key];
+    const label = `${firstName(sig.name)}'s first UAE entry`;
+    out.push(
+      isIsoDate(on)
+        ? { key, label, done: true, detail: on <= state.today ? "Already in the UAE" : `Landing ${fmtDay(on)}` }
+        : {
+            key,
+            label,
+            done: false,
+            detail: `When does ${sig.name} first land in the UAE? ADGM needs one entry before incorporation`,
+            options: entryOptions(state),
+          },
+    );
+  }
+
+  if (p.dependants.length) {
+    const open = p.dependants.filter((d) => !state.inputs[`documents:${d.id}`]);
+    const notYet = p.dependants.filter((d) => state.inputs[`documents:${d.id}`] === DOCS_NOT_YET);
+    const names = (ds: Dependant[]) => joinAnd(ds.map((d) => d.name ?? dependantLabel(p, d)));
+    const certs = joinAnd(open.map((d) => `the ${certificateFor(d)} for ${dependantLabel(p, d)}`));
+    out.push(
+      open.length
+        ? {
+            key: "documents",
+            label: "Family certificates",
+            done: false,
+            detail: `${open.length > 1 ? "Are" : "Is"} ${certs} legalised for the UAE? Dependant visas need ${open.length > 1 ? "them" : "it"}`,
+            options: [open.length > 1 ? "They're legalised and ready" : "It's legalised and ready", "Not yet"],
+          }
+        : {
+            key: "documents",
+            label: "Family certificates",
+            done: true,
+            detail: notYet.length
+              ? `Not legalised yet for ${names(notYet)}; ${notYet.length > 1 ? "those visas file" : "that visa files"} once ${notYet.length > 1 ? "they are" : "it is"}`
+              : "Legalised and ready",
+          },
+    );
+  }
+
+  const bank = missingFacts(state).bank;
+  out.push(
+    bank.length
+      ? { key: "bank", label: "Bank file facts", done: false, detail: `For the bank file: ${joinAnd(bank.map((k) => SHORT_FACT[k] ?? k))}` }
+      : { key: "bank", label: "Bank file facts", done: true, detail: "Source of funds, ownership, volume and countries confirmed" },
+  );
+  return out;
+}
+
+/** True when the founder can press Confirm & pay: a fully priced route with every detail collected. */
+export function readyToPay(state: CaseState): boolean {
+  const q = quote(state);
+  return !state.paid && !!q && !priceIsPartial(q) && payChecklist(state).every((c) => c.done);
+}
+
+/** For the agent: what to ask next before payment, or the cue for the final review. Undefined once paid. */
+export function payHint(state: CaseState): string | undefined {
+  if (state.paid || !isRoute(state.route)) return undefined;
+  const next = payChecklist(state).find((c) => !c.done);
+  // The price comes before the details, so the founder knows the cost before handing over passports. Only an
+  // unanswered Hub71 question goes first, because it comes with the route.
+  const unansweredConsent = next?.key === "consent:hub71_letter" && !state.inputs["consent:hub71_letter"];
+  if (next && !unansweredConsent && !state.inputs.quoted) {
+    return 'Offer the plan or the price next ("Show my plan" / "What will it cost?"). The details for payment come after the price.';
+  }
+  if (next) return `Payment comes last. Ask for: ${next.detail}${next.options ? ` (offer: ${next.options.join(" / ")})` : ""}.`;
+  const q = quote(state);
+  if (!q || priceIsPartial(q)) return undefined;
+  return "Every detail for payment is in: call show_price for the final review, then tell the founder to press Confirm & pay.";
+}
+
 export function waitingItems(state: CaseState): WaitingItem[] {
   const route = state.route;
   if (!isRoute(route)) return [];
+  if (!state.paid) {
+    const out: WaitingItem[] = payChecklist(state)
+      .filter((c) => !c.done)
+      .map((c) => ({ key: c.key, label: c.detail, ...(c.options ? { options: c.options } : {}) }));
+    const q = quote(state);
+    if (q && !priceIsPartial(q) && !out.length) out.push({ key: "pay", label: `Confirm and pay ${aed(q.totalAed)} to start filing` });
+    return out;
+  }
+  // After payment the details are already in; these cover a certificate that wasn't ready, a medical slot, the
+  // bank file's flags, and cases paid before the checklist existed.
   const missingIds = identityMissingFor(state, kycSubjects(state));
   const identityItem: WaitingItem | null = missingIds.length
     ? { key: "identity", label: `Passport details for ${joinAnd(missingIds.map((x) => x.who))}`, options: IDENTITY_OPTIONS }
     : null;
-  if (!state.paid) {
-    const out: WaitingItem[] = [];
-    if (needsHub71Consent(state)) out.push({ key: "consent:hub71_letter", label: "Approve the Hub71 eligibility letter application", options: CONSENT_OPTIONS });
-    if (identityItem) out.push(identityItem);
-    const q = quote(state);
-    if (q && !priceIsPartial(q)) out.push({ key: "pay", label: `Confirm and pay ${aed(q.totalAed)} to start filing` });
-    return out;
-  }
   const insts = stepInstances(state, route);
   const status = stepStatuses(state, insts);
   const out: WaitingItem[] = [];
@@ -1214,12 +1396,12 @@ export function waitingItems(state: CaseState): WaitingItem[] {
       out.push({ key: `entry:${inst.subjectId}`, label: needsInputText(state, inst), options: entryOptions(state) });
     } else if (inst.step === "medical") {
       out.push({ key: `medical:${inst.subjectId}`, label: needsInputText(state, inst), options: medicalSlots(state) });
-    } else if (inst.step === "dependant_visa" && !state.inputs[`documents:${inst.subjectId}`]) {
+    } else if (inst.step === "dependant_visa" && !documentsReady(state, inst.subjectId)) {
       const d = state.profile.dependants.find((x) => x.id === inst.subjectId);
       const who = whoFor(state.profile, inst.step, inst.subjectId);
       out.push({
         key: `documents:${inst.subjectId}`,
-        label: `${d?.relation === "child" ? "Legalised birth certificate" : "Legalised marriage certificate"} needed for ${who ?? "the dependant visa"}`,
+        label: `Legalised ${d ? certificateFor(d) : "certificate"} needed for ${who ?? "the dependant visa"}`,
         options: ["It's legalised and ready", "Not yet"],
       });
     } else if (inst.step === "bank_file") {
@@ -1317,7 +1499,10 @@ export function authorisations(state: CaseState, route: RouteId): string[] {
   out.push(`Apply for the establishment card${route === "masdar" ? "" : " and e-Channels"}`);
   out.push("Register the company for corporate tax with the FTA");
   if (movers.length) out.push(`Entry permits, medical tests and Emirates IDs for ${joinAnd(movers)}`);
-  if (deps.length) out.push(`Dependant visas for ${joinAnd(deps)}, once their certificates are legalised`);
+  if (deps.length) {
+    const ready = p.dependants.every((d) => documentsReady(state, d.id));
+    out.push(`Dependant visas for ${joinAnd(deps)}${ready ? "" : ", once their certificates are legalised"}`);
+  }
   out.push("Business account application with Wio Business");
   out.push("Payments account with Stripe");
   return out;

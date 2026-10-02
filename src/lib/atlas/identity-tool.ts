@@ -2,7 +2,7 @@
 // saved passports) and reused by every filing. Server only. Only the last 4 passport characters are kept.
 import type OpenAI from "openai";
 import type { CaseState, IdentityDetails, StreamEvent } from "./types";
-import { filingsCard, identityCard, kycSubjects, sandboxIdentities, saveIdentities, waitingItems } from "./engine.ts";
+import { filingsCard, identityCard, kycSubjects, payHint, sandboxIdentities, saveIdentities, waitingItems } from "./engine.ts";
 import { isIsoDate } from "./format.ts";
 
 interface Ctx {
@@ -113,6 +113,12 @@ export function executeSaveIdentity(args: Record<string, unknown>, ctx: Ctx): st
     problems: problems.length ? problems : undefined,
     filed: r.filed.map((f) => f.step),
     waitingOnFounder: waitingItems(r.state).map((w) => w.label),
-    note: "The details card is on screen. Never repeat full passport numbers. If anyone is missing, ask for their passport; otherwise move on (usually: Confirm & pay).",
+    note: `The details card is on screen. Never repeat full passport numbers. ${
+      card.missing.length
+        ? "Ask for the missing passports."
+        : card.people.some((p) => !p.ok)
+          ? "Say whose passport is too close to expiry and ask for the renewed one."
+          : (payHint(r.state) ?? "Move on to whatever is waiting on the founder.")
+    }`,
   });
 }

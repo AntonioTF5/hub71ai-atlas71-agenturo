@@ -5,11 +5,14 @@ import {
   buildPlan,
   dayNumber,
   describeFact,
+  documentsReady,
   isBankFileStale,
   isFitStale,
   isRoute,
   missingFacts,
+  payChecklist,
   quote,
+  readyToPay,
   waitingItems,
 } from "./engine.ts";
 import { aed, fmtDay } from "./format.ts";
@@ -78,7 +81,15 @@ export function caseSummary(state: CaseState) {
       role: x.role,
       relocating: state.inputs[`relocating:${x.id}`] === "unconfirmed" ? "unknown (ask)" : x.relocating,
     })),
-    dependants: p.dependants.map((d) => ({ id: d.id, name: d.name, relation: d.relation, sponsorId: d.sponsorId })),
+    dependants: p.dependants.map((d) =>
+      compact({
+        id: d.id,
+        name: d.name,
+        relation: d.relation,
+        sponsorId: d.sponsorId,
+        certificate: state.inputs[`documents:${d.id}`] ? (documentsReady(state, d.id) ? "legalised" : "not legalised yet") : undefined,
+      }),
+    ),
     missingBeforeRoute: missing.route.map(describeFact),
     missingForBankFile: missing.bank.map(describeFact),
     route: state.route ? `${state.route} (${ROUTES[state.route].name})` : null,
@@ -92,6 +103,14 @@ export function caseSummary(state: CaseState) {
       : null,
     price: price ? `${aed(price.totalAed)}${price.paid ? " (paid, locked)" : ""}` : null,
     paid: state.paid ? `${aed(state.paid.amountAed)} on ${state.paid.on}` : null,
+    // Payment comes last: what the founder still owes before Confirm & pay unlocks, in the order to ask.
+    beforePayment:
+      !state.paid && isRoute(state.route)
+        ? payChecklist(state).map((c) =>
+            compact({ key: c.key, item: c.label, status: c.done ? "done" : "needed", detail: c.detail, options: c.done ? undefined : c.options }),
+          )
+        : null,
+    readyToPay: !state.paid && isRoute(state.route) ? readyToPay(state) : null,
     milestones: plan?.milestones.map((m) => `${m.label}: ${m.doneOn ? `done ${m.doneOn}` : m.best ? `best ${m.best}, typical ${m.typical}` : "n/a"}`),
     steps: plan
       ? plan.groups

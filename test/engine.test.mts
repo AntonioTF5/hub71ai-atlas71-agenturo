@@ -26,6 +26,8 @@ import { addDays } from "../src/lib/atlas/format.ts";
 import { compareCard } from "../src/lib/atlas/compare.ts";
 
 const START = "2026-10-02";
+const FUNDING = "$600k from 8 angel investors through convertible notes in Routely, a DPIIT-recognised Bangalore company";
+const OWNERSHIP = "Routely will own 100% of the ADGM company; Meera holds 55% and Arjun 45% of Routely";
 
 function routely(arjunMoves = false): CaseState {
   const { state, errors } = applyProfile(emptyCase(START, "routely"), {
@@ -38,6 +40,8 @@ function routely(arjunMoves = false): CaseState {
     hub71Letter: "none",
     monthlyVolumeUsd: 40000,
     transactionCountries: "UAE, Saudi Arabia, India",
+    fundingSource: FUNDING,
+    ownership: OWNERSHIP,
     people: [
       { name: "Meera Iyer", role: "founder", relocating: true },
       { name: "Arjun Rao", role: "founder", relocating: arjunMoves },
@@ -48,11 +52,13 @@ function routely(arjunMoves = false): CaseState {
     ],
   });
   assert.deepEqual(errors, []);
-  // Meera has OK'd the Hub71 letter and the sandbox passports are on file, so no filing waits on either.
-  // The signatory is already in the UAE, so incorporation isn't held for a first entry.
+  // Everything payment needs is in, so the founder can pay: Meera has OK'd the Hub71 letter, the sandbox
+  // passports are on file, she's already in the UAE (so incorporation isn't held for a first entry), the bank
+  // facts are confirmed, and she said the family certificates aren't legalised yet.
   const sig = signatoryOf(state.profile)!;
   const s: CaseState = { ...state, route: "adgm_tsl", inputs: { ...state.inputs, "consent:hub71_letter": "yes", [`entry:${sig.id}`]: START } };
-  return { ...s, identities: Object.fromEntries(sandboxIdentities(s).map((i) => [i.subjectId, i])) };
+  const ready = provideInput(s, "documents:all", "Not yet").state;
+  return { ...ready, identities: Object.fromEntries(sandboxIdentities(ready).map((i) => [i.subjectId, i])) };
 }
 
 function byteforge(): CaseState {
@@ -203,19 +209,13 @@ test("the bank account waits for the bank file and the founder's Emirates ID", (
   s = provideInput(s, "medical:Meera", "slot").state;
   s = advance(s, { days: 14 }).state; // Emirates ID done, but no bank file yet
   const status = () => stepStatuses(s, stepInstances(s, "adgm_tsl"));
-  assert.equal(status().bank_file, "needs_input");
+  // The bank facts came before payment, so the file only waits for its TypeSafe check, not for the founder.
+  assert.equal(status().bank_file, "ready");
   assert.equal(status().bank_account, "locked");
+  assert.ok(!waitingOn(s).some((w) => w.startsWith("Bank file")), "nothing about the bank is asked after payment");
   const meera = s.profile.people.find((p) => p.name === "Meera Iyer")!;
   assert.equal(status()[`emirates_id:${meera.id}`], "done");
 
-  const facts = applyProfile(s, {
-    fundingSource: "$600k from 8 angel investors through convertible notes in Routely, a DPIIT-recognised Bangalore company",
-    ownership: "Routely will own 100% of the ADGM company; Meera holds 55% and Arjun 45% of Routely",
-  });
-  assert.deepEqual(facts.errors, []);
-  assert.deepEqual(facts.changed.sort(), ["fundingSource", "ownership"]);
-  s = facts.state;
-  assert.deepEqual(missingFacts(s).bank, [], "both bank gaps are filled by the founder's answer");
   s = { ...s, bankFile: { sections: [], missing: [], checks: [], meta: { live: true }, ready: true, profileKey: "x" } };
   const done = completeBankFile(s);
   assert.deepEqual(done.filed.map((f) => f.step), ["bank_file", "bank_account"]);
@@ -323,26 +323,30 @@ test("the sandbox checkout matches the locked price and uses a test card", () =>
   assert.match(c.receipt, /^A71-RCPT-26-\d{6}$/);
 });
 
-test("incorporation waits for the signatory's first UAE entry, and one visit date unlocks it", () => {
+test("incorporation waits for the signatory's first UAE entry, asked before payment", () => {
   const base = routely();
   const sig = signatoryOf(base.profile)!;
   assert.equal(sig.name, "Meera Iyer", "a relocating founder is the signatory");
   const inputs = { ...base.inputs };
   delete inputs[`entry:${sig.id}`];
-  let s: CaseState = startLanding({ ...base, inputs }).state;
-  const status = () => {
-    const st: Record<string, string> = stepStatuses(s, stepInstances(s, "adgm_tsl"));
-    return { ...st, signatory_entry: st[`signatory_entry:${sig.id}`] } as Record<string, string>;
-  };
-  assert.equal(status().signatory_entry, "needs_input");
-  assert.ok(waitingOn(s).some((w) => w.startsWith("When does Meera Iyer first land")));
+  let s: CaseState = { ...base, inputs };
+  assert.ok(waitingOn(s)[0].startsWith("When does Meera Iyer first land"), "the landing date is asked before payment");
+  assert.match(startLanding(s).error ?? "", /Payment comes last/);
 
   const landing = addDays(START, 7);
   const r = provideInput(s, `entry:Meera`, `Landing ${landing}`);
   assert.equal(r.state.inputs[`entry:${sig.id}`], landing);
-  s = r.state;
+  assert.equal(r.filed.length, 0, "nothing is filed before payment");
+  const entryStep = buildPlan(r.state)!.groups.flatMap((g) => g.steps).find((x) => x.step === "signatory_entry")!;
+  assert.deepEqual(entryStep.typical, [START, landing], "the plan uses the landing day the founder named");
+  s = startLanding(r.state).state;
+  const status = () => {
+    const st: Record<string, string> = stepStatuses(s, stepInstances(s, "adgm_tsl"));
+    return { ...st, signatory_entry: st[`signatory_entry:${sig.id}`] } as Record<string, string>;
+  };
   assert.equal(status().signatory_entry, "filed");
   assert.equal(status().incorporation, "locked");
+  assert.ok(!waitingOn(s).some((w) => w.includes("first land")), "the date isn't asked again after payment");
   s = advance(s, { days: 14 }).state;
   assert.equal(status().signatory_entry, "done");
   assert.notEqual(status().incorporation, "locked");
