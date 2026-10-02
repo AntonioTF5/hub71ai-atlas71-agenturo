@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { DEFAULT_MODEL, llm, LIGHT_REASONING } from "@/lib/llm";
+import { AGENT_MODEL, llm, modelParams } from "@/lib/llm";
 import type { AgentAction, AgentRequest, StreamEvent } from "@/lib/atlas/types";
 import { normalizeState } from "@/lib/atlas/engine";
 import { localToday } from "@/lib/atlas/format";
@@ -88,9 +88,10 @@ function sanitizeAction(raw: unknown): AgentAction | undefined {
   return undefined;
 }
 
-// The static rules and knowledge are marked cacheable (OpenRouter passes cache_control to Anthropic);
-// the live case summary comes after the breakpoint.
+// The static rules and knowledge come first so they're cached: OpenAI caches a repeated prefix on its
+// own; Anthropic needs a cache_control breakpoint. The live case summary follows.
 function systemMessage(state: ToolContext["state"]): OpenAI.Chat.ChatCompletionSystemMessageParam {
+  if (!AGENT_MODEL.startsWith("anthropic/")) return { role: "system", content: `${STATIC_PROMPT}\n\n${casePrompt(state)}` };
   const parts = [
     { type: "text", text: STATIC_PROMPT, cache_control: { type: "ephemeral" } },
     { type: "text", text: casePrompt(state) },
@@ -158,14 +159,13 @@ async function runAgent(
 
     const completion = await llm().chat.completions.create(
       {
-        model: DEFAULT_MODEL,
+        model: AGENT_MODEL,
         stream: true,
         tools: TOOLS,
         tool_choice: "auto",
-        temperature: 0.3,
         max_tokens: 4000,
         messages,
-        ...LIGHT_REASONING,
+        ...modelParams(AGENT_MODEL),
       },
       { signal, timeout: 30_000, maxRetries: 1 },
     );
@@ -226,13 +226,12 @@ async function runAgent(
     messages[0] = systemMessage(ctx.state);
     const res = await llm().chat.completions.create(
       {
-        model: DEFAULT_MODEL,
-        temperature: 0.3,
+        model: AGENT_MODEL,
         max_tokens: 3000,
         tools: TOOLS,
         tool_choice: { type: "function", function: { name: "offer_choices" } },
         messages,
-        ...LIGHT_REASONING,
+        ...modelParams(AGENT_MODEL),
       },
       { signal, timeout: 20_000, maxRetries: 1 },
     );

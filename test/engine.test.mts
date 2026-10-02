@@ -228,3 +228,16 @@ test("normalizeState rejects garbage and keeps a valid case", () => {
   const back = normalizeState(JSON.parse(JSON.stringify(s)), START);
   assert.equal(quote(back)!.totalAed, 40075);
 });
+
+test("a family member saved as a person is moved out of the visa holders", () => {
+  const { state } = applyProfile(emptyCase(START), {
+    company: "Routely",
+    people: [
+      { name: "Meera Iyer", role: "founder", relocating: true },
+      { name: "Rohan", role: "employee", relocating: true },
+    ],
+    dependants: [{ relation: "spouse", sponsorName: "Meera Iyer", name: "Rohan" }],
+  });
+  assert.deepEqual(state.profile.people.map((p) => p.name), ["Meera Iyer"]);
+  assert.equal(state.profile.dependants.length, 1);
+});

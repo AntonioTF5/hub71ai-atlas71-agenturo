@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL } from "@/lib/llm";
+import { AGENT_MODEL } from "@/lib/llm";
 import { typesafe } from "@/lib/typesafe";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +33,10 @@ async function checkOpenRouter() {
       method: "POST",
       headers,
       cache: "no-store",
-      body: JSON.stringify({ model: DEFAULT_MODEL, max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
+      body: JSON.stringify({ model: AGENT_MODEL, max_tokens: 16, messages: [{ role: "user", content: "hi" }] }),
     });
     const completion = chatRes.ok ? "ok" : `${chatRes.status} ${await chatRes.text()}`;
-    return { ok: chatRes.ok, keyInfo, completion };
+    return { ok: chatRes.ok, model: AGENT_MODEL, keyInfo, completion };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }

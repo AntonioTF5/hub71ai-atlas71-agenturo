@@ -18,7 +18,17 @@ export function llm() {
 // Swap per call or via env. Browse ids at https://openrouter.ai/models
 export const DEFAULT_MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-5.5";
 
-// OpenRouter's unified reasoning switch. Sonnet 5.5 always reasons ("cannot be disabled"), so keep it
-// minimal: the agent needs quick tool calls, and reasoning tokens count against max_tokens.
-// Spread into a create() call and leave max_tokens generous.
-export const LIGHT_REASONING = { reasoning: { effort: "minimal" } } as Record<string, unknown>;
+// The Atlas71 agent and its drafting run on an OpenAI mid-tier model (GPT-6.1 Sol) through OpenRouter.
+// Override with ATLAS_AGENT_MODEL. TypeSafe (typesafe.ts) still answers the eligibility and bank checks.
+export const AGENT_MODEL = process.env.ATLAS_AGENT_MODEL ?? "openai/gpt-6.1-sol";
+
+/**
+ * Per-family request extras for chat.completions.create(). OpenAI reasoning models take a reasoning
+ * effort and no temperature; Claude 5.x always reasons, so keep it minimal. Reasoning tokens count
+ * against max_tokens, so callers keep max_tokens generous.
+ */
+export function modelParams(model: string, effort: "minimal" | "low" | "medium" = "low"): Record<string, unknown> {
+  if (model.startsWith("openai/")) return { reasoning: { effort } };
+  if (model.startsWith("anthropic/")) return { temperature: 0.3, reasoning: { effort: "minimal" } };
+  return { temperature: 0.3 };
+}

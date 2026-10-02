@@ -206,5 +206,20 @@ export function applyProfile(input: CaseState, raw: unknown): ProfileUpdate {
     }
   }
 
+  // Family members are dependants, never company visa holders: drop a person who is also listed as a dependant.
+  const dependantNames = new Set(p.dependants.filter((d) => d.name).map((d) => norm(d.name as string)));
+  const dependantFirst = new Set([...dependantNames].map((n) => n.split(" ")[0]));
+  const sponsors = new Set(p.dependants.map((d) => d.sponsorId));
+  for (let i = p.people.length - 1; i >= 0; i--) {
+    const person = p.people[i];
+    const n = norm(person.name);
+    const isFamily = dependantNames.has(n) || (!n.includes(" ") && dependantFirst.has(n));
+    if (isFamily && !sponsors.has(person.id)) {
+      p.people.splice(i, 1);
+      delete state.inputs[`relocating:${person.id}`];
+      changed.push(`people:${person.name}:is-dependant`);
+    }
+  }
+
   return { state, changed, errors };
 }
