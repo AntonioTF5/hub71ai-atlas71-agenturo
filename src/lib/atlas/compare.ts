@@ -98,7 +98,7 @@ export function compareCard(state: CaseState, checks: Judgment[], meta: ChecksMe
   }
 
   const company = p.company ?? "your company";
-  const wins = ["cuts the tax bill"];
+  const wins = ["lowers your tax rates"];
   if (gcc) wins.push("puts you next to Gulf customers");
   if (raising) wins.push("opens Hub71 and Gulf investors");
   const life = family ? ", with residency for the whole family" : hiring ? ", with visas for the team" : "";

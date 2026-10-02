@@ -41,8 +41,8 @@ export const UAE: Record<CellKey, Cell> & {
   costSources: string[];
 } = {
   corporateTax: {
-    text: "0% on profit up to AED 375k, 9% above; 0% only on qualifying free-zone income",
-    sources: ["uae-ct-rates", "mof-ct"],
+    text: "0% on profit up to AED 375k, 9% above; Small Business Relief can make revenue up to AED 3m tax-free through 2029",
+    sources: ["uae-ct-rates", "uae-sbr"],
   },
   personalTax: { text: "No personal income tax on salaries", sources: ["uae-personal-tax"] },
   vat: { text: "5% VAT; services exported to non-GCC clients abroad are zero-rated", sources: ["uae-vat", "uae-vat-reg"] },
@@ -51,12 +51,12 @@ export const UAE: Record<CellKey, Cell> & {
     sources: ["uae-expat-pension", "adgm-eao-faq"],
   },
   ecosystem: {
-    text: "Hub71 Access: AED 250k via SAFE + AED 250k in kind (selective); Mubadala alone manages AED 1.4tn",
-    sources: ["hub71-faqs", "mubadala-2025"],
+    text: "Hub71 Access: AED 250k via SAFE + AED 250k in kind; about 1.1% of Cohort 18 applicants got in; Mubadala alone manages AED 1.4tn",
+    sources: ["hub71-faqs", "hub71-cohort18", "mubadala-2025"],
   },
-  market: { text: "Inside the GCC common market; mainland sales may need a dual licence", sources: ["mof-gcc", "adra-dual"] },
+  market: { text: "Near Gulf clients; onshore Abu Dhabi work may need a dual licence; GCC common-market rights belong to GCC citizens", sources: ["mof-gcc", "adra-dual"] },
   residency: {
-    text: "2-year visa through your company; sponsor your spouse and children",
+    text: "Renewable 2-year visa through your company; sponsor spouse and children from AED 4,000 a month (or 3,000 with housing)",
     sources: ["uae-work-visa", "uae-family-visa"],
   },
   longTermVisa: {
@@ -84,11 +84,11 @@ export const HOME_BASES: HomeBase[] = [
     name: "India",
     match: /india|bangalore|bengaluru|mumbai|delhi|hyderabad|pune|chennai|gurgaon|gurugram|noida/i,
     cells: {
-      corporateTax: { text: "About 25.2% (22% + surcharge + cess)", sources: ["pwc-india-cit"] },
-      personalTax: { text: "Up to about 39% (30% top slab + surcharge + cess)", sources: ["pwc-india-pit"] },
+      corporateTax: { text: "About 25.2% (22% regime); IMB-certified startups can take a 3-year profit holiday instead", sources: ["pwc-india-cit", "india-startup-holiday"] },
+      personalTax: { text: "New regime: 30% above ₹24 lakh, about 39% with surcharge and cess above ₹2 crore; residents are taxed on worldwide income", sources: ["pwc-india-pit"] },
       vat: { text: "18% GST on software services; exports zero-rated under a bond or LUT", sources: ["pwc-india-other", "xflow-gst"] },
-      socialSecurity: { text: "Employer pays 12% of basic pay to EPF (wage ceiling INR 25,000 a month since Sep 2026)", sources: ["pwc-india-indiv-other", "pib-epf-ceiling"] },
-      ecosystem: { text: "Deep home ecosystem: 2.23 lakh+ recognised startups", sources: ["pib-startups"] },
+      socialSecurity: { text: "Employer 12% to EPF at firms with 20+ staff, compulsory on wages up to ₹25,000 a month (ceiling raised Sep 2026)", sources: ["pwc-india-indiv-other", "pib-epf-ceiling"] },
+      ecosystem: { text: "2.23 lakh+ DPIIT-recognised startups (31 Mar 2026)", sources: ["pib-startups"] },
       market: { text: "Home market plus Gulf customers served from abroad", sources: [] },
       residency: { text: "Home country: no visas", sources: [] },
       longTermVisa: { text: "Not needed", sources: [] },
@@ -109,9 +109,9 @@ export const HOME_BASES: HomeBase[] = [
     match: /egypt|cairo|giza|alexandria/i,
     cells: {
       corporateTax: { text: "22.5%", sources: ["pwc-egypt-cit"] },
-      personalTax: { text: "Up to 27.5%", sources: ["pwc-egypt-pit"] },
+      personalTax: { text: "Up to 27.5%, on taxable income above EGP 1.2m a year", sources: ["pwc-egypt-pit"] },
       vat: { text: "14% VAT; exported services zero-rated", sources: ["pwc-egypt-other"] },
-      socialSecurity: { text: "Employer pays 18.75% social insurance", sources: ["pwc-egypt-indiv-other"] },
+      socialSecurity: { text: "Employer 18.75% of insured pay, capped at EGP 16,700 a month in 2026 (about EGP 3,130 at most)", sources: ["pwc-egypt-indiv-other"] },
       ecosystem: { text: "Cost-competitive talent; US$4.8bn digital exports in 2025", sources: ["itida-outlook"] },
       market: { text: "Large home market; Gulf clients served from Cairo", sources: [] },
       residency: { text: "Home country: no visas", sources: [] },

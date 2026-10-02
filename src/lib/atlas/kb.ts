@@ -191,6 +191,27 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
       "CT 0% on taxable income up to AED 375,000; 9% above AED 375,000",
     ),
     source(
+      "uae-sbr",
+      "UAE MoF · Small Business Relief extended to 31 Dec 2029 (7 Aug 2026)",
+      "https://mof.gov.ae/en/news/ministry-of-finance-announces-extension-of-small-business-relief-for-corporate-tax-purposes-until-31-december-2029/",
+      "official",
+      "Ministerial Decision 131 of 2026 extends Small Business Relief to tax periods ending on or before 31 Dec 2029. Businesses with revenue of AED 3m or less in the period and all earlier ones can elect to be treated as having no taxable income; qualifying free-zone persons and large multinational groups can't.",
+    ),
+    source(
+      "india-startup-holiday",
+      "Startup India · Income tax exemption (Inter-Ministerial Board)",
+      "https://www.startupindia.gov.in/content/sih/en/startupgov/imb.html",
+      "official",
+      "DPIIT-recognised private limited companies and LLPs incorporated on or after 1 Apr 2016 and before 1 Apr 2030 can apply to the Inter-Ministerial Board for a full profit deduction for a period of years.",
+    ),
+    source(
+      "hub71-cohort18",
+      "Hub71 · Cohort 18 press release (4 Jun 2026)",
+      "https://www.hub71.com/latest-news/press-release/hub71-selects-27-startups-for-cohort-18-in-first-all-international-intake-after-record-2453-applications",
+      "official",
+      "27 startups selected from 2,453 applications for Cohort 18, a 1.1% acceptance rate.",
+    ),
+    source(
       "mof-ct",
       "UAE MoF - Corporate Tax",
       "https://mof.gov.ae/corporate-tax/",
