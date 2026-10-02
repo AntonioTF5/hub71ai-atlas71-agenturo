@@ -5,7 +5,7 @@ import type { PriceCardData, PriceLine } from "@/lib/atlas/types";
 import { SOURCES } from "@/lib/atlas/kb";
 import { aed, fmtDate, fmtDateLong, fmtDay, isIsoDate } from "@/lib/atlas/format";
 import { useAtlasUi } from "../context";
-import { IconCheck, IconExternal, IconInfo, IconReceipt, Spinner } from "../icons";
+import { IconCheck, IconExternal, IconInfo, IconLock, IconReceipt, Spinner } from "../icons";
 import { BUTTON, Money, MicroLabel, Notice, SandboxPill, SourceRow, cx } from "../ui";
 import { CardShell } from "./CardShell";
 
@@ -67,7 +67,11 @@ export function PriceCard({ data }: { data: PriceCardData }) {
   const total = data.totalAed;
   const otherRoute = !paid && !paidLater && !!live && live.routeName !== data.routeName;
   const outOfDate = !paid && !paidLater && !partial && !!live && !otherRoute && live.totalAed !== data.totalAed;
-  const payable = !paid && !paidLater && !partial && !!live && !otherRoute && !outOfDate;
+  // Payment comes last: the button unlocks once every detail the filings need is in.
+  const current = !paid && !paidLater && !partial && !!live && !otherRoute && !outOfDate;
+  const checklist = current ? ui.payChecklist : [];
+  const open = checklist.filter((c) => !c.done).length;
+  const payable = current && !open;
   const lines = data.lines ?? [];
 
   const pay = () => {
@@ -163,19 +167,54 @@ export function PriceCard({ data }: { data: PriceCardData }) {
         </div>
       ) : null}
 
-      {payable ? (
-        <div className="sticky bottom-3 z-10 -mx-1 mt-6 rounded-[18px] bg-surface p-1 pb-2 shadow-[0_-14px_18px_-14px_rgb(16_24_40/0.16)]">
+      {checklist.length ? (
+        <div className="mt-6 border-t border-line pt-4">
+          <MicroLabel>{open ? "Before you pay" : "Ready to file"}</MicroLabel>
+          <ul className="mt-2 space-y-2">
+            {checklist.map((c) => (
+              <li key={c.key} className="flex gap-2.5 text-[14px] leading-snug">
+                {c.done ? (
+                  <IconCheck size={15} strokeWidth={2.8} className="mt-[3px] shrink-0 text-good" />
+                ) : (
+                  <span aria-hidden="true" className="mt-[4px] size-[13px] shrink-0 rounded-full border-2 border-gold" />
+                )}
+                <span className="min-w-0 text-pretty">
+                  <span className="sr-only">{c.done ? "Done: " : "Still needed: "}</span>
+                  {c.done ? (
+                    <>
+                      <span className="font-medium text-ink">{c.label}</span>
+                      <span className="text-muted"> · {c.detail}</span>
+                    </>
+                  ) : (
+                    <span className="text-ink">{c.detail}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {current ? (
+        <div
+          className={cx(
+            "z-10 -mx-1 mt-5 rounded-[18px] bg-surface p-1 pb-2",
+            payable && "sticky bottom-3 shadow-[0_-14px_18px_-14px_rgb(16_24_40/0.16)]",
+          )}
+        >
           <button
             type="button"
             onClick={pay}
-            disabled={ui.busy}
-            className={cx(BUTTON.primary, "h-14 w-full rounded-[14px] text-[16px] shadow-lift")}
+            disabled={ui.busy || !payable}
+            className={cx(BUTTON.primary, "h-14 w-full rounded-[14px] text-[16px]", payable && "shadow-lift")}
           >
-            {clicked && ui.busy ? <Spinner size={18} /> : null}
+            {clicked && ui.busy ? <Spinner size={18} /> : !payable ? <IconLock size={17} /> : null}
             Confirm &amp; pay {aed(total)}
           </button>
           <p className="mt-2 text-pretty text-center text-[12.5px] leading-snug text-muted">
-            Paying authorises Atlas71 to file the steps in your plan on your behalf. Nothing is filed before you pay.
+            {payable
+              ? "Paying authorises Atlas71 to file the steps in your plan on your behalf. Nothing is filed before you pay."
+              : `Payment comes last, so nothing stalls once you've paid. Answer the ${open === 1 ? "item" : `${open} items`} above in the chat and this unlocks.`}
           </p>
           <p className="mt-1 text-center text-[12px] text-muted">Simulated checkout in the sandbox. No card is charged.</p>
         </div>

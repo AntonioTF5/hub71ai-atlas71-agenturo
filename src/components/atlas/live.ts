@@ -1,7 +1,7 @@
 // The client's view of the engine: plan, price and what's waiting on the founder, recomputed from the
 // live case. Every call is guarded, so an engine edge case shows an empty tracker instead of a crash.
 import type { CaseState, PlanCardData, PriceCardData } from "@/lib/atlas/types";
-import { buildPlan, dayNumber, priceIsPartial, quote, waitingOn } from "@/lib/atlas/engine";
+import { buildPlan, dayNumber, payChecklist, priceIsPartial, quote, waitingOn, type PayCheck } from "@/lib/atlas/engine";
 import { buildJsonPack, buildMarkdownPack, packFileName } from "@/lib/atlas/export";
 import type { ExportFile } from "./context";
 
@@ -17,6 +17,7 @@ function safe<T>(fn: () => T, fallback: T): T {
 export interface Derived {
   plan: PlanCardData | null;
   price: PriceCardData | null;
+  checklist: PayCheck[];
   waiting: string[];
   day: number;
 }
@@ -25,6 +26,7 @@ export function derive(state: CaseState): Derived {
   return {
     plan: safe(() => buildPlan(state), null),
     price: safe(() => quote(state), null),
+    checklist: safe(() => (state.paid ? [] : payChecklist(state)), []),
     waiting: safe(() => waitingOn(state), []),
     day: safe(() => dayNumber(state), 0),
   };

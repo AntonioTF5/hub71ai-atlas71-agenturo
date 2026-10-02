@@ -26,6 +26,7 @@ function Fixture({ state, busy = false, children }: { state: CaseState; busy?: b
         return false;
       },
       livePrice: derive(state).price,
+      payChecklist: derive(state).checklist,
       isPartial: isPartialPrice,
       exportFile: (ext) => exportCase(state, ext),
     }),
@@ -147,7 +148,10 @@ export default function CardsGallery() {
     ["Route · TypeSafe not set up", F.stateFacts, { kind: "route", data: F.routeCardSetup }],
     ["Plan · before payment", F.stateUnpaid, { kind: "plan", data: F.planCard }],
     ["Plan · day 21", F.statePaid, { kind: "plan", data: F.planCardLater }],
-    ["Price · unpaid", F.stateUnpaid, { kind: "price", data: F.priceCard }],
+    ["Price · unpaid, details still needed (button locked)", F.stateUnpaid, { kind: "price", data: FX.priceCardLive }],
+    ["Price · unpaid, collecting details", FX.stateCollecting, { kind: "price", data: FX.priceCardLive }],
+    ["Price · final review, ready to pay", FX.stateReadyToPay, { kind: "price", data: FX.priceCardLive }],
+    ["Price · out of date (facts changed since)", F.stateUnpaid, { kind: "price", data: F.priceCard }],
     ["Price · paid", F.statePaid, { kind: "price", data: F.priceCardPaid }],
     ["Price · Masdar (partial)", F.stateByteforge, { kind: "price", data: F.priceCardMasdar }],
     ["Price · Byteforge ADGM", F.stateByteforge, { kind: "price", data: F.priceCardByteforge }],
@@ -162,7 +166,8 @@ export default function CardsGallery() {
   const trackers: [string, CaseState, string[]?][] = [
     ["Tracker · empty", empty],
     ["Tracker · facts, no route", F.stateFacts],
-    ["Tracker · route, unpaid, three things waiting", F.stateUnpaid, FX.waitingBeforePay],
+    ["Tracker · route, unpaid, every detail waiting", F.stateUnpaid, FX.waitingBeforePay],
+    ["Tracker · ready to pay", FX.stateReadyToPay],
     ["Tracker · paid, day 21", F.statePaid],
   ];
 

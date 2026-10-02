@@ -1,5 +1,9 @@
-// Extra gallery fixtures (dev only): the passport details card, all valid and with a warning.
-import type { IdentityCardData } from "@/lib/atlas/types";
+// Extra gallery fixtures (dev only): the passport details card, all valid and with a warning, and the
+// pre-payment states (details still being collected, and the final review with Confirm & pay unlocked).
+import type { CaseState, IdentityCardData, PriceCardData } from "@/lib/atlas/types";
+import { provideInput, quote, sandboxIdentities, saveIdentities } from "@/lib/atlas/engine";
+import { applyProfile } from "@/lib/atlas/profile";
+import { stateUnpaid } from "./fixtures";
 
 const USED_FOR = [
   "ADGM Registration Authority: shareholders and directors",
@@ -78,9 +82,30 @@ export const identityCardWarning: IdentityCardData = {
   sandbox: true,
 };
 
-/** The tracker's "Waiting on you" list before payment, as the server now words it. */
+/** The tracker's "Waiting on you" list before payment, as the server words it: every detail comes before paying. */
 export const waitingBeforePay: string[] = [
   "Approve the Hub71 eligibility letter application",
-  "Passport details for Meera Iyer, Arjun Rao, Rohan and Anya",
-  "Confirm and pay AED 40,075 to start filing",
+  "Passport details for Meera Iyer, Arjun Rao, Rohan (spouse) and Anya (child)",
+  "When does Meera Iyer first land in the UAE? ADGM needs one entry before incorporation",
+  "Are the marriage certificate for Rohan (spouse) and the birth certificate for Anya (child) legalised for the UAE? Dependant visas need them",
+  "For the bank file: the source of funds and the ownership chain",
 ];
+
+/** Routely halfway: the Hub71 OK and passports are in; the landing date, certificates and bank facts aren't. */
+export const stateCollecting: CaseState = (() => {
+  const s = provideInput(stateUnpaid, "consent:hub71_letter", "Yes, apply for me").state;
+  return saveIdentities(s, sandboxIdentities(s)).state;
+})();
+
+/** Routely with every detail payment needs: the final review, with Confirm & pay unlocked. */
+export const stateReadyToPay: CaseState = (() => {
+  let s = provideInput(stateCollecting, "entry:Meera", "Landing 2026-10-09").state;
+  s = provideInput(s, "documents:all", "Not yet").state;
+  return applyProfile(s, {
+    fundingSource: "$600k from 8 angel investors through convertible notes in Routely, a DPIIT-recognised Bangalore company",
+    ownership: "Routely will own 100% of the ADGM company; Meera holds 55% and Arjun 45% of Routely",
+  }).state;
+})();
+
+/** Routely's current quote, so the pre-payment price cards match the live case (not "out of date"). */
+export const priceCardLive: PriceCardData = quote(stateUnpaid)!;

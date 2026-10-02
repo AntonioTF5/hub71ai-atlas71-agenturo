@@ -114,10 +114,11 @@ function AtlasShell() {
       busy,
       send,
       livePrice: derived.price,
+      payChecklist: derived.checklist,
       isPartial: isPartialPrice,
       exportFile: (ext) => exportCase(state, ext),
     }),
-    [state, busy, send, derived.price],
+    [state, busy, send, derived.price, derived.checklist],
   );
 
   const [sheetOpen, setSheetOpen] = useState(false);

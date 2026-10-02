@@ -28,8 +28,8 @@ And before any of that, they haven't even decided. A founder in Bangalore or Cai
 1. **Decide.** A side-by-side card, *Abu Dhabi vs your home base* (Bangalore and Cairo ship today), compares taxes, opportunities, residency, working conditions and first-year costs. Every cell links to the official page it came from, and TypeSafe flags which rows matter for *this* founder.
 2. **Route.** TypeSafe judges the business (own product vs service provider vs regulated) and the engine picks ADGM Tech Startup Licence, ADGM standard licence or Masdar City, with the reasons and the prerequisites.
 3. **Plan and price.** A dated plan (best and typical windows, chained by dependency) and **one all-in price**, itemised in AED with a source per line.
-4. **Ask before acting.** Nothing is done on the founder's behalf without their say-so. The Hub71 application needs an explicit yes, passports are read once and reused, and the checkout lists exactly what paying authorises.
-5. **Pay and land.** An express-checkout bubble in the chat (sandbox, test card) returns a receipt, then Atlas71 files in order, asks for the founder's first UAE entry date, books the medical, builds the bank file and tracks every deadline on a simulated clock.
+4. **Ask before acting, pay last.** Nothing is done on the founder's behalf without their say-so, and payment is the final step. The Hub71 application needs an explicit yes; passports (read once and reused), the signatory's first UAE entry date, whether family certificates are legalised, and the bank facts are all collected after the price and before payment. Confirm & pay unlocks only on a complete case, and the checkout lists exactly what paying authorises.
+5. **Pay and land.** An express-checkout bubble in the chat (sandbox, test card) returns a receipt, then Atlas71 files in order, books the medical, builds the bank file and tracks every deadline on a simulated clock. After payment the founder only picks a medical slot and confirms any certificate that wasn't legalised yet.
 6. **Bank file with a safety net.** TypeSafe reviews the file for source of funds, ownership traced to people, and expected activity before it goes anywhere.
 
 ## Agent capabilities
@@ -38,7 +38,7 @@ The agent (`src/lib/atlas/tools.ts`) is a bounded tool-calling loop: 8 turns, a 
 
 - `save_profile`: stores facts the founder stated. Each sensitive fact is **verified against the founder's own words with TypeSafe**; anything they didn't say is dropped and asked about again.
 - `compare_abu_dhabi`, `check_route`, `show_plan`, `show_price`, `choose_route`: the decision and planning cards.
-- `start_landing`, `advance_time`, `provide_input`: payment, the filing simulator, and the founder's answers (consent, entry date, medical slot, documents).
+- `start_landing`, `advance_time`, `provide_input`: payment (refused until every pre-payment detail is in), the filing simulator, and the founder's answers (consent, entry date, family certificates, medical slot).
 - `save_identity`: passport details from photos or the saved sandbox passports; only the last 4 characters are kept.
 - `prepare_bank_file`: drafts from confirmed facts only, then runs the TypeSafe bank checks.
 - `web_search`, `fetch_url`: live web through Tavily, with official-source preference and untrusted-content handling.
@@ -84,10 +84,11 @@ This is a sandbox. Integrations, filings, payments and the bank are simulated, t
 
 1. Open the live URL and click **Routely** (B2B SaaS, Bangalore-based, $600k raised). Choose the sandbox account.
 2. Answer **Just me for now**, watch the *Abu Dhabi vs Bangalore* card, then **No** to the Hub71 letter.
-3. See the recommended route, then **Yes, apply for me** (consent), **What will it cost?** and **Use my saved passports**.
-4. **Confirm & pay** and watch the checkout, then pick a landing date.
-5. Press **+2 weeks** twice and **Next event**: licence, establishment card, tax registration, entry permit, and a medical slot to pick.
-6. Optional: **Reset demo** and try **Byteforge** (a Cairo dev agency): the engine routes to the ADGM standard licence with two desks.
+3. See the recommended route, then **Yes, apply for me** (consent) and **What will it cost?**. The price card lists what's still needed, and Confirm & pay stays locked until it's all in.
+4. **Use my saved passports**, pick a landing date, answer the family certificates (**Not yet** is fine), and type where the money came from and who owns the company (e.g. "$600k from 8 angels via convertible notes; I hold 55%, Arjun 45%").
+5. On the final price card every item is ticked: **Confirm & pay** and watch the checkout.
+6. Press **+2 weeks** twice and **Next event**: licence, establishment card, tax registration, entry permit, and a medical slot to pick.
+7. Optional: **Reset demo** and try **Byteforge** (a Cairo dev agency): the engine routes to the ADGM standard licence with two desks.
 
 Access: no login is required. The sign-in is a labelled sandbox with demo accounts only; nothing is collected.
 

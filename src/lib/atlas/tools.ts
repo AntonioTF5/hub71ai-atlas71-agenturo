@@ -19,6 +19,8 @@ import {
   isFitStale,
   isRoute,
   missingFacts,
+  payChecklist,
+  payHint,
   priceIsPartial,
   profileKey,
   provideInput,
@@ -171,7 +173,7 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
   ),
   fn(
     "provide_input",
-    "Save a founder answer that unblocks a step and file whatever it unblocks. Keys: consent:hub71_letter (value: what the founder said; only an explicit yes counts as consent), entry:<founderId> (value: the signatory's first UAE entry: a date YYYY-MM-DD, an offered 'Landing ...' option, or 'Already in the UAE'), medical:<personId> (value: the chosen slot), documents:<dependantId> (value: what they confirmed). Bank facts go through save_profile; passports go through save_identity.",
+    "Save a founder answer that unblocks a step and file whatever it unblocks. Keys: consent:hub71_letter (value: what the founder said; only an explicit yes counts as consent), entry:<founderId> (value: the signatory's first UAE entry, asked before payment: a date YYYY-MM-DD, an offered 'Landing ...' option, or 'Already in the UAE'), medical:<personId> (value: the chosen slot), documents:<dependantId> or documents:all for every family member at once (value: what they confirmed, e.g. \"It's legalised and ready\" or \"Not yet\"; a certificate that isn't legalised is recorded as not yet and that visa waits for it). Bank facts go through save_profile; passports go through save_identity.",
     { key: { type: "string" }, value: { type: "string" } },
     ["key", "value"],
   ),
@@ -403,7 +405,7 @@ function nextHint(state: CaseState): string | undefined {
       ? `Still needed for the bank file: ${missing.bank.map(describeFact).join("; ")}.`
       : "The bank file facts changed: call prepare_bank_file again.";
   }
-  return undefined;
+  return payHint(state);
 }
 
 function filedSummary(state: CaseState, filed: Filing[]) {
@@ -537,7 +539,9 @@ const EXECUTORS: Record<string, Executor> = {
       note:
         fit.route === "specialist"
           ? "Specialist review: explain why in one sentence; there's no plan or price in this demo for regulated activity."
-          : "The route card is on screen. Give the pick and the main reason in 1–2 sentences, then offer the plan or the price.",
+          : payChecklist(ctx.state).some((c) => c.key === "consent:hub71_letter" && !c.done)
+            ? 'The route card is on screen. Give the pick and the main reason in 1–2 sentences, then ask whether Atlas71 should apply for the Hub71 eligibility letter for them (offer_choices "Yes, apply for me" / "Not yet").'
+            : "The route card is on screen. Give the pick and the main reason in 1–2 sentences, then offer the plan or the price.",
     });
   },
 
@@ -560,19 +564,29 @@ const EXECUTORS: Record<string, Executor> = {
     if (!q) {
       return fail(ctx.state.fit?.route === "specialist" ? "No price: this case goes to specialist review." : "No route yet: call check_route first.");
     }
+    if (!q.paid && !ctx.state.inputs.quoted) {
+      // The price has been shown: from here the agent collects what payment needs.
+      ctx.state = { ...ctx.state, inputs: { ...ctx.state.inputs, quoted: ctx.state.today } };
+      ctx.emit({ t: "state", state: ctx.state });
+    }
     ctx.emit({ t: "card", card: { kind: "price", data: q } });
     const partial = priceIsPartial(q);
+    const open = q.paid || partial ? [] : payChecklist(ctx.state).filter((c) => !c.done);
+    const first = open[0];
     return ok({
       total: aed(q.totalAed),
       partial,
       paid: q.paid,
       lines: q.lines.map((l) => `${l.label}${l.qty ? ` × ${l.qty}` : ""}: ${aed(l.amountAed)}`),
       validUntil: q.validUntil,
+      beforePayment: open.length ? open.map((c) => c.detail) : undefined,
       note: q.paid
         ? "Already paid; the price is locked."
         : partial
           ? `This is a "from" price: Masdar's visa and establishment-card fees are quoted by the free zone, so there's no payment yet.`
-          : "The price card is on screen with a Confirm & pay button. Say it's one all-in price and that they can press Confirm & pay when ready.",
+          : first
+            ? `The price card is on screen. Say it's one all-in price and that payment comes last: Atlas71 collects what the filings need first (the card lists it), so nothing stalls once they pay. Then ask for the first item: ${first.detail}${first.options ? ` (offer: ${first.options.join(" / ")})` : ""}. Don't tell them to pay yet.`
+            : "The price card is on screen with every detail ticked and the Confirm & pay button unlocked. Say it's one all-in price, everything Atlas71 needs is in, and they can review the card and press Confirm & pay when ready.",
     });
   },
 
@@ -596,7 +610,14 @@ const EXECUTORS: Record<string, Executor> = {
       return fail("Only the founder can pay, by pressing Confirm & pay on the price card. Ask them to press it.");
     }
     const r = startLanding(ctx.state);
-    if (r.error) return fail(r.error);
+    if (r.error) {
+      const open = payChecklist(ctx.state).find((c) => !c.done);
+      return fail(
+        open
+          ? `${r.error} Nothing was charged. Tell the founder in one sentence that payment comes last, then ask for: ${open.detail}${open.options ? ` (offer: ${open.options.join(" / ")})` : ""}.`
+          : r.error,
+      );
+    }
     // The sandbox checkout plays first (pre-filled, processing, confirmed); filings follow once it settles.
     const checkout = checkoutCard(r.state);
     if (checkout) {
@@ -606,12 +627,14 @@ const EXECUTORS: Record<string, Executor> = {
     ctx.state = r.state;
     ctx.emit({ t: "state", state: r.state });
     if (r.filed.length) ctx.emit({ t: "card", card: { kind: "filings", data: filingsCard(r.state, r.filed) } });
+    const waiting = waitingItems(r.state);
     return ok({
       paid: aed(r.state.paid?.amountAed ?? 0),
       receipt: checkout?.receipt,
       filed: filedSummary(r.state, r.filed),
       authorised: checkout?.authorises,
-      note: "Say once that this is a sandbox with simulated filings and payment. Confirm the price is locked, that paying authorised the filings listed in the checkout, what's filed now, and that the clock moves with the tracker buttons (+2 weeks, Next event). If anything is waiting on the founder (the Hub71 OK, passports, the signatory's first UAE entry date), ask for it, offering the options in waitingOnFounder.",
+      waitingOnFounder: waiting.length ? waiting : undefined,
+      note: `Say once that this is a sandbox with simulated filings and payment. Confirm the price is locked, that paying authorised the filings listed in the checkout, and what's filed now. Every detail was collected before payment, so don't ask for passports, dates or bank facts again; from here the founder only picks a medical slot when an entry permit lands${r.state.profile.dependants.length ? " and confirms any family certificate that wasn't legalised yet" : ""}. Offer the clock: the tracker buttons (+2 weeks, Next event) move it.`,
     });
   },
 
@@ -660,7 +683,7 @@ const EXECUTORS: Record<string, Executor> = {
     return ok({
       saved: r.key,
       filed: filedSummary(r.state, r.filed),
-      note: r.filed.length ? undefined : "Saved. The step files automatically as soon as it unlocks.",
+      note: r.state.paid ? (r.filed.length ? undefined : "Saved. The step files automatically as soon as it unlocks.") : `Saved. ${payHint(r.state) ?? ""}`.trim(),
       waitingOnFounder: waitingItems(r.state).map((w) => w.label),
       bankFile: bankHint(r.state),
     });

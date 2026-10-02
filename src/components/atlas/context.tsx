@@ -5,6 +5,7 @@
 // provides fixtures, so every card renders without the server.
 import { createContext, useContext } from "react";
 import type { AgentAction, CaseState, PriceCardData } from "@/lib/atlas/types";
+import type { PayCheck } from "@/lib/atlas/engine";
 
 export interface ExportFile {
   name: string;
@@ -19,6 +20,8 @@ export interface AtlasUi {
   send: (text: string, action?: AgentAction) => boolean;
   /** quote(state) for the live case, used to tell when an older price card is out of date. */
   livePrice: PriceCardData | null;
+  /** payChecklist(state) for the live case: what the founder settles before Confirm & pay unlocks. */
+  payChecklist: PayCheck[];
   isPartial: (card: PriceCardData) => boolean;
   exportFile: (ext: "md" | "json") => ExportFile | null;
 }
