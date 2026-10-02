@@ -284,3 +284,15 @@ test("compare card: Abu Dhabi vs Bangalore for Routely, Cairo for Byteforge", ()
   assert.equal(b.homeLabel, "Cairo");
   assert.match(b.firstYear[1].label, /1-bed × 4/);
 });
+
+test("a bank fact that only says it's missing is not saved", () => {
+  const { state, errors } = applyProfile(emptyCase(START), {
+    fundingSource: "Raised $600k; investor identities and instrument not yet stated.",
+    ownership: "Unknown",
+    fundingUsd: 600000,
+  });
+  assert.equal(state.profile.fundingSource, null);
+  assert.equal(state.profile.ownership, null);
+  assert.equal(state.profile.fundingUsd, 600000);
+  assert.equal(errors.length, 2);
+});

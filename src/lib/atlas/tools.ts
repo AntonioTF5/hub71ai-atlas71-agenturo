@@ -71,9 +71,15 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
       homeBase: { type: "string", description: 'Where the company is based today, e.g. "Bangalore, India".' },
       stage: { type: "string", description: 'e.g. "Seed".' },
       fundingUsd: { type: "number", description: "Total raised so far, in USD." },
-      fundingSource: { type: "string", description: "Only as the founder stated it: who invested, how much, and how (e.g. SAFEs)." },
+      fundingSource: {
+        type: "string",
+        description: "Only once the founder has said who invested, how much and how (e.g. SAFEs). Omit it until then; never write a placeholder.",
+      },
       parentEntity: { type: "string", description: 'An existing parent company, e.g. "Routely Inc., Delaware C-corp".' },
-      ownership: { type: "string", description: "Only as the founder stated it: the chain from the UAE company up to the people, with percentages." },
+      ownership: {
+        type: "string",
+        description: "Only once the founder has stated the chain from the UAE company up to the people, with percentages. Omit it until then.",
+      },
       hub71Letter: { type: "string", enum: ["none", "applied", "have"], description: "Hub71 eligibility letter status." },
       sellsOnshoreUAE: { type: "boolean", description: "True if they'll sell to customers on the UAE mainland." },
       monthlyVolumeUsd: { type: "number", description: "Expected monthly payment volume, in USD." },

@@ -16,6 +16,12 @@ const STRING_FIELDS = [
 ] as const;
 const NUMBER_FIELDS = ["fundingUsd", "monthlyVolumeUsd"] as const;
 
+// A "fact" that only says it's missing ("not yet stated", "unknown", "TBD") must stay missing, so the
+// agent asks for it and the bank file keeps flagging it.
+const PLACEHOLDER_FACT =
+  /\b(not (yet )?(stated|provided|confirmed|known|specified|disclosed|given|shared)|unknown|unspecified|tbd|tbc|n\/a|to be (confirmed|provided|determined)|pending confirmation|awaiting)\b/i;
+const MUST_BE_REAL = new Set(["fundingSource", "ownership", "transactionCountries"]);
+
 export interface ProfileUpdate {
   state: CaseState;
   changed: string[];
@@ -72,6 +78,10 @@ export function applyProfile(input: CaseState, raw: unknown): ProfileUpdate {
     }
     const s = v.trim().slice(0, 600);
     if (!s || p[key] === s) continue;
+    if (MUST_BE_REAL.has(key) && PLACEHOLDER_FACT.test(s)) {
+      errors.push(`${key}: leave it out until the founder states it`);
+      continue;
+    }
     p[key] = s;
     changed.push(key);
   }
