@@ -10,6 +10,9 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  if (!process.env.OPENROUTER_API_KEY) {
+    return new Response("OPENROUTER_API_KEY is not set", { status: 500 });
+  }
   const { messages, model, system } = (await req.json()) as Body;
 
   const stream = await llm().chat.completions.create({
