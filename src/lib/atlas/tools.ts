@@ -2,7 +2,7 @@
 // Each executor returns a compact JSON string for the model and may emit card, state and activity events.
 // Arguments are checked by hand; malformed arguments never mutate state.
 import type OpenAI from "openai";
-import { DEFAULT_MODEL, llm } from "@/lib/llm";
+import { DEFAULT_MODEL, llm, NO_REASONING } from "@/lib/llm";
 import type { AgentAction, BankFile, CaseState, Filing, FitResult, StreamEvent } from "./types";
 import { ROUTES, STEPS } from "./kb.ts";
 import {
@@ -249,6 +249,7 @@ async function draftBankFile(state: CaseState): Promise<{ title: string; body: s
             },
           }, ["sections"]),
         ],
+        ...NO_REASONING,
         messages: [
           {
             role: "system",

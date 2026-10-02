@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { llm } from "@/lib/llm";
+import { llm, NO_REASONING } from "@/lib/llm";
 import { allow, clientIp } from "@/lib/ratelimit";
 
 // Voice input: the browser records with MediaRecorder and posts the clip here; Gemini (through
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await llm().chat.completions.create(
-        { model: MODEL, temperature: 0, max_tokens: 2000, messages: [{ role: "user", content }] },
+        { model: MODEL, temperature: 0, max_tokens: 2000, messages: [{ role: "user", content }], ...NO_REASONING },
         { timeout: 25_000, maxRetries: 0 },
       );
       return Response.json({ text: (res.choices[0]?.message?.content ?? "").trim() });

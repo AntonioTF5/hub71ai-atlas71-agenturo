@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { DEFAULT_MODEL, llm } from "@/lib/llm";
+import { DEFAULT_MODEL, llm, NO_REASONING } from "@/lib/llm";
 import type { AgentAction, AgentRequest, StreamEvent } from "@/lib/atlas/types";
 import { normalizeState } from "@/lib/atlas/engine";
 import { localToday } from "@/lib/atlas/format";
@@ -108,11 +108,13 @@ async function runAgent(
   let lastVisible: "text" | "other" | null = null;
   let turnHasText = false;
   let fresh = ""; // text since the last card, activity or choices
+  let spoke = false; // any words or choices shown in this response
   ctx.emit = (e) => {
     if (e.t === "card" || e.t === "activity" || e.t === "choices") {
       lastVisible = "other";
       fresh = "";
     }
+    if (e.t === "choices") spoke = true;
     send(e);
   };
   const emitText = (d: string) => {
@@ -121,6 +123,7 @@ async function runAgent(
     turnHasText = true;
     lastVisible = "text";
     fresh += text;
+    if (text.trim()) spoke = true;
     send({ t: "text", d: text });
   };
   ctx.freshText = () => fresh;
@@ -128,6 +131,7 @@ async function runAgent(
     const text = lastVisible === "text" && !/^\s/.test(d) ? `\n\n${d}` : d;
     lastVisible = "text";
     fresh += text;
+    spoke = true;
     send({ t: "text", d: text });
   };
 
@@ -159,8 +163,9 @@ async function runAgent(
         tools: TOOLS,
         tool_choice: "auto",
         temperature: 0.3,
-        max_tokens: 1000,
+        max_tokens: 1500,
         messages,
+        ...NO_REASONING,
       },
       { signal, timeout: 30_000, maxRetries: 1 },
     );
@@ -209,10 +214,31 @@ async function runAgent(
     });
     let stop = false;
     for (const c of toolCalls) {
-      messages.push({ role: "tool", tool_call_id: c.id, content: await executeTool(c.name, c.args, ctx) });
-      if (c.name === "offer_choices") stop = true;
+      const result = await executeTool(c.name, c.args, ctx);
+      messages.push({ role: "tool", tool_call_id: c.id, content: result });
+      if (c.name === "offer_choices" && !result.startsWith('{"error"')) stop = true;
     }
     if (stop) break;
+  }
+
+  // Never leave the founder without a reply: if nothing was said, force one message with choices.
+  if (!spoke && Date.now() - started < SOFT_DEADLINE_MS) {
+    messages[0] = systemMessage(ctx.state);
+    const res = await llm().chat.completions.create(
+      {
+        model: DEFAULT_MODEL,
+        temperature: 0.3,
+        max_tokens: 600,
+        tools: TOOLS,
+        tool_choice: { type: "function", function: { name: "offer_choices" } },
+        messages,
+        ...NO_REASONING,
+      },
+      { signal, timeout: 20_000, maxRetries: 1 },
+    );
+    const call = res.choices[0]?.message?.tool_calls?.[0];
+    console.log(JSON.stringify({ atlas: "fallback", ok: call?.type === "function" }));
+    if (call?.type === "function") await executeTool("offer_choices", call.function.arguments, ctx);
   }
   send({ t: "state", state: ctx.state });
 }
