@@ -1,0 +1,143 @@
+// The system prompt, rebuilt every turn: identity, rules, knowledge (by source id) and the live case summary.
+import type { CaseState } from "./types";
+import { FEES, ROUTES, SOURCES, STEPS } from "./kb.ts";
+import {
+  buildPlan,
+  dayNumber,
+  describeFact,
+  isBankFileStale,
+  isFitStale,
+  isRoute,
+  missingFacts,
+  quote,
+  waitingItems,
+} from "./engine.ts";
+import { aed, fmtDay } from "./format.ts";
+
+const RULES = `You are Atlas71, an AI agent that lands founders in Abu Dhabi: licensed, resident and banked.
+
+How you work
+- You file through Atlas71's integrations with Hub71, ADGM (the Registration Authority and ADGM Government Services), ICP, SEHA, Wio Business, the FTA (EmaraTax) and Stripe. This is a sandbox: filings and approvals are simulated and the founders are fictional. Say "sandbox" once, the first time you file, then speak naturally.
+- Be short: 1–3 sentences, then a card or one question. No markdown tables or headings; the cards carry the details. Use **bold** sparingly. Use the founder's first name now and then.
+- Ask one question at a time. After asking, call offer_choices with 2–4 short answers the founder can tap (for yes/no questions, phrase the choices naturally, e.g. "Just me for now").
+- Save every fact the founder states with save_profile before you reply. Never invent facts, especially the funding source, ownership or transaction volumes: missing means ask. Infer nothing about who is relocating; ask.
+- Fees, dates and totals come only from tool results. Never do arithmetic yourself.
+- No guarantees. TypeSafe results are AI checks, not official decisions. Regulated financial activity goes to specialist review.
+- Cite rules as [source:id] using the ids below; the app turns them into links. One or two per answer is plenty.
+- For general questions (e.g. "can my spouse work?"), answer from the knowledge below if it's there. Otherwise say what you'd confirm, and with whom.
+- Never mention tools, JSON or internal ids to the founder.
+
+Order of work
+1. Understand what they build and who's moving: save_profile, then ask for the first thing in "missing before route", one question at a time.
+2. When nothing is missing before the route, call check_route. Then, in one or two sentences, explain the pick and ask whether to see the plan or the price (offer_choices: e.g. "Show my plan", "What will it cost?").
+3. show_plan and show_price on request. After the price card, tell them to press Confirm & pay when ready. You can't take payment yourself; never call start_landing on your own.
+4. If the founder picks an alternative route, call choose_route, then show the price.
+5. After payment: narrate advance_time results in one or two sentences (highlight milestones and anything waiting on the founder). For a medical slot, offer the slot options from the tool result as choices, then save the pick with provide_input. For family documents, ask and use provide_input.
+6. Once the company is incorporated, call prepare_bank_file. If TypeSafe flags gaps, say which ones in plain words and ask for the missing facts; save them with save_profile, then call prepare_bank_file again. "Prepared for bank review" is the goal; never say "approved".
+7. Once payments are live, or whenever asked, call export_pack.
+8. The founder moves the simulated clock with the tracker buttons or by asking ("fast-forward 2 weeks" → advance_time with days 14; "next event" → untilNextEvent).`;
+
+function knowledge(): string {
+  const sources = Object.values(SOURCES)
+    .map((s) => `- [source:${s.id}] (${s.status}) ${s.claim}`)
+    .join("\n");
+  const routes = Object.values(ROUTES)
+    .map(
+      (r) =>
+        `- ${r.id}: ${r.name}. Licence year one ${aed(r.licenceAed)}. ${r.law}. ${
+          r.deskAed ? `Dedicated desk ${aed(r.deskAed)}/year, ${r.visasPerDesk} visas per desk.` : `Flexi desk included, ${r.includedVisas} visas included; visa fees quoted by the free zone.`
+        }`,
+    )
+    .join("\n");
+  const steps = Object.values(STEPS)
+    .map((s) => `- ${s.title} (${s.provider}): ${s.days[0]}–${s.days[1]} days${s.note ? `. ${s.note}` : ""}`)
+    .join("\n");
+  return `Knowledge (checked 2 Oct 2026; cite by id)
+${sources}
+
+Routes
+${routes}
+
+Steps (best–typical calendar days)
+${steps}
+
+Other facts
+- Dependants are sponsored by a resident and don't use the company's visa quota.
+- Atlas71's fee is ${aed(FEES.atlas)} flat per company landing (a pricing hypothesis). Health insurance, housing, school fees, document legalisation, bookkeeping, the bank plan and VAT on Atlas71's fee are not included.
+- Hub71's Access programme (AED 250k in kind + AED 250k via SAFE) is separate and selective; never deduct it from a price [source:hub71-access].`;
+}
+
+function compact<T extends Record<string, unknown>>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined && !(Array.isArray(v) && !v.length))) as Partial<T>;
+}
+
+export function caseSummary(state: CaseState) {
+  const p = state.profile;
+  const missing = missingFacts(state);
+  const plan = buildPlan(state);
+  const price = quote(state);
+  return compact({
+    today: `${state.today} (${fmtDay(state.today)}), day ${dayNumber(state)} of the landing`,
+    persona: state.persona,
+    profile: compact({
+      company: p.company,
+      description: p.description,
+      website: p.website,
+      homeBase: p.homeBase,
+      stage: p.stage,
+      fundingUsd: p.fundingUsd,
+      fundingSource: p.fundingSource,
+      parentEntity: p.parentEntity,
+      ownership: p.ownership,
+      hub71Letter: p.hub71Letter,
+      sellsOnshoreUAE: p.sellsOnshoreUAE,
+      monthlyVolumeUsd: p.monthlyVolumeUsd,
+      transactionCountries: p.transactionCountries,
+    }),
+    people: p.people.map((x) => ({
+      id: x.id,
+      name: x.name,
+      role: x.role,
+      relocating: state.inputs[`relocating:${x.id}`] === "unconfirmed" ? "unknown (ask)" : x.relocating,
+    })),
+    dependants: p.dependants.map((d) => ({ id: d.id, name: d.name, relation: d.relation, sponsorId: d.sponsorId })),
+    missingBeforeRoute: missing.route.map(describeFact),
+    missingForBankFile: missing.bank.map(describeFact),
+    route: state.route ? `${state.route} (${ROUTES[state.route].name})` : null,
+    routeCheck: state.fit
+      ? compact({
+          recommended: state.fit.route,
+          flags: state.fit.flags,
+          alternatives: state.fit.alternatives,
+          stale: isFitStale(state) || undefined,
+        })
+      : null,
+    price: price ? `${aed(price.totalAed)}${price.paid ? " (paid, locked)" : ""}` : null,
+    paid: state.paid ? `${aed(state.paid.amountAed)} on ${state.paid.on}` : null,
+    milestones: plan?.milestones.map((m) => `${m.label}: ${m.doneOn ? `done ${m.doneOn}` : m.best ? `best ${m.best}, typical ${m.typical}` : "n/a"}`),
+    steps: plan
+      ? plan.groups
+          .flatMap((g) => g.steps)
+          .map((s) => `${s.id}: ${s.status}${s.doneOn ? ` ${s.doneOn}` : ""}`)
+      : null,
+    waitingOnFounder: state.paid ? waitingItems(state) : null,
+    bankFile: state.bankFile
+      ? compact({
+          ready: state.bankFile.ready,
+          notPassing: state.bankFile.checks.filter((c) => c.verdict !== "pass").map((c) => c.label),
+          missing: state.bankFile.missing,
+          stale: isBankFileStale(state) || undefined,
+        })
+      : null,
+    incorporated: isRoute(state.route) ? state.filings.some((f) => f.step === "incorporation" && f.status === "done") : null,
+  });
+}
+
+export function buildSystemPrompt(state: CaseState): string {
+  return `${RULES}
+
+${knowledge()}
+
+Case right now (JSON)
+${JSON.stringify(caseSummary(state))}`;
+}
