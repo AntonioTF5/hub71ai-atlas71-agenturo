@@ -4,10 +4,11 @@ import { memo, useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { MessagePart } from "@/lib/atlas/types";
 import { CardView } from "./cards/CardView";
-import { IconAlert, IconCard, IconCheck, IconFastForward, IconFile, IconImage, IconInfo, IconRefresh, Spinner } from "./icons";
+import { IconAlert, IconCard, IconCheck, IconFastForward, IconInfo, IconRefresh, Spinner } from "./icons";
 import { RichText } from "./rich-text";
 import { SETUP_REQUIRED, type UiMessage } from "./session";
 import { BUTTON, Notice, cx } from "./ui";
+import { FileBadge } from "./file-badge";
 import { formatBytes } from "./files";
 
 export function AssistantAvatar({ className }: { className?: string }) {
@@ -135,24 +136,23 @@ function UserMessage({ message, previews }: { message: UiMessage; previews?: (st
   return (
     <div className="flex flex-col items-end gap-2">
       {message.attachments?.length ? (
-        <ul className="flex max-w-[85%] flex-wrap justify-end gap-2" aria-label="Attachments">
+        <ul className="flex max-w-[85%] flex-wrap items-end justify-end gap-2" aria-label="Attachments">
           {message.attachments.map((a, i) => {
             const thumb = previews?.[i];
+            const kind = a.mime === "application/pdf" ? "PDF" : "Photo";
             return (
-              <li key={`${a.name}-${i}`}>
+              <li key={`${a.name}-${i}`} title={a.name}>
                 {thumb ? (
                   // eslint-disable-next-line @next/next/no-img-element -- a local data URL thumbnail
-                  <img src={thumb} alt={a.name} width={88} height={88} className="size-[88px] rounded-2xl border border-line object-cover" />
+                  <img src={thumb} alt={a.name} width={88} height={88} className="size-[88px] rounded-2xl border border-line object-cover shadow-card" />
                 ) : (
-                  <span className="flex h-12 max-w-[240px] items-center gap-2 rounded-2xl border border-line bg-surface px-3">
-                    {a.mime.startsWith("image/") ? (
-                      <IconImage size={17} className="shrink-0 text-muted" />
-                    ) : (
-                      <IconFile size={17} className="shrink-0 text-muted" />
-                    )}
+                  <span className="flex h-14 max-w-[260px] items-center gap-2.5 rounded-2xl border border-line bg-surface py-2 pl-2 pr-3.5 shadow-card">
+                    <FileBadge mime={a.mime} />
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium text-ink">{a.name}</span>
-                      {a.size ? <span className="block text-[11.5px] tabular-nums text-muted">{formatBytes(a.size)}</span> : null}
+                      <span className="block truncate text-[13px] font-medium leading-5 text-ink">{a.name}</span>
+                      <span className="block text-[12px] leading-4 tabular-nums text-muted">
+                        {a.size ? `${kind} · ${formatBytes(a.size)}` : kind}
+                      </span>
                     </span>
                   </span>
                 )}

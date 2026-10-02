@@ -110,7 +110,7 @@ export function StepRow({ step, today }: { step: PlanStep; today: string }) {
 export function CompactStepRow({ step, etaOn }: { step: PlanStep; etaOn?: string }) {
   let when: ReactNode;
   if (step.doneOn) when = <span className="text-good">{fmtDate(step.doneOn)}</span>;
-  else if (step.status === "needs_input") when = <span className="font-semibold text-gold-ink">Your move</span>;
+  else if (step.status === "needs_input") when = <span className="font-semibold text-gold-ink">Waiting on you</span>;
   else if ((step.status === "filed" || step.status === "in_review") && etaOn) when = <>ETA {fmtDate(etaOn)}</>;
   else when = safeRange(step.best?.[1], step.typical?.[1]);
   return (

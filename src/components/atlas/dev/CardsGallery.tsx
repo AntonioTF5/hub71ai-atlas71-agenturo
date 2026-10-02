@@ -7,6 +7,7 @@ import { emptyCase } from "@/lib/atlas/personas";
 import { CardView } from "../cards/CardView";
 import { AtlasUiProvider, type AtlasUi } from "../context";
 import * as F from "../fixtures";
+import * as FX from "../fixtures-extra";
 import { derive, exportCase, isPartialPrice } from "../live";
 import { MessageView } from "../Message";
 import type { UiMessage } from "../session";
@@ -85,10 +86,10 @@ const FILES: UiMessage[] = [
   {
     id: "f1",
     role: "user",
-    parts: [{ type: "text", text: "Here's our cap table and the SAFE summary." }],
+    parts: [{ type: "text", text: "Here's our cap table and the convertible note summary." }],
     attachments: [
       { name: "routely-cap-table.pdf", mime: "application/pdf", size: 182_000 },
-      { name: "safe-summary.jpg", mime: "image/jpeg", size: 412_000 },
+      { name: "convertible-notes.jpg", mime: "image/jpeg", size: 412_000 },
     ],
   },
 ];
@@ -136,6 +137,8 @@ export default function CardsGallery() {
 
   const cards: [string, CaseState, Parameters<typeof CardView>[0]["card"]][] = [
     ["Checkout · from history", F.statePaid, { kind: "checkout", data: F.checkoutCard }],
+    ["Passport details · all valid", F.stateUnpaid, { kind: "identity", data: FX.identityCardOk }],
+    ["Passport details · short validity, missing people", F.stateUnpaid, { kind: "identity", data: FX.identityCardWarning }],
     ["Compare · Abu Dhabi vs Bangalore", F.stateFacts, { kind: "compare", data: F.compareCard }],
     ["Route · Routely (live TypeSafe)", F.stateUnpaid, { kind: "route", data: F.routeCard }],
     ["Route · Byteforge (service provider flagged)", F.stateByteforge, { kind: "route", data: F.routeCardByteforge }],
@@ -156,10 +159,10 @@ export default function CardsGallery() {
     ["Export", F.statePaid, { kind: "export", data: F.exportCard }],
   ];
 
-  const trackers: [string, CaseState][] = [
+  const trackers: [string, CaseState, string[]?][] = [
     ["Tracker · empty", empty],
     ["Tracker · facts, no route", F.stateFacts],
-    ["Tracker · route, unpaid", F.stateUnpaid],
+    ["Tracker · route, unpaid, three things waiting", F.stateUnpaid, FX.waitingBeforePay],
     ["Tracker · paid, day 21", F.statePaid],
   ];
 
@@ -211,7 +214,7 @@ export default function CardsGallery() {
       <section id="trackers" className="mx-auto mt-14 w-full max-w-[1640px] scroll-mt-4 px-4 sm:px-6">
         <Label>Tracker states</Label>
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-          {trackers.map(([label, state]) => {
+          {trackers.map(([label, state, waiting]) => {
             const d = derive(state);
             return (
               <div key={label} className="min-w-0">
@@ -223,7 +226,7 @@ export default function CardsGallery() {
                       plan={d.plan}
                       price={d.price}
                       partial={d.price ? isPartialPrice(d.price) : false}
-                      waiting={d.waiting}
+                      waiting={waiting ?? d.waiting}
                       day={d.day}
                       busy={false}
                       onAdvance={noop}

@@ -64,7 +64,7 @@ export interface ToolContext {
 }
 
 /** How long the checkout card animates (pre-filled, processing, confirmed) before the filings appear. */
-export const CHECKOUT_MS = 2400;
+export const CHECKOUT_MS = 5000;
 
 /** A claim is kept unless TypeSafe finds it clearly unsupported by the conversation. */
 const CLAIM_MIN_P = 0.4;
@@ -171,7 +171,7 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
   ),
   fn(
     "provide_input",
-    "Save a founder answer that unblocks a step and file whatever it unblocks. Keys: consent:hub71_letter (value: what the founder said; only an explicit yes counts as consent), medical:<personId> (value: the chosen slot), documents:<dependantId> (value: what they confirmed). Bank facts go through save_profile; passports go through save_identity.",
+    "Save a founder answer that unblocks a step and file whatever it unblocks. Keys: consent:hub71_letter (value: what the founder said; only an explicit yes counts as consent), entry:<founderId> (value: the signatory's first UAE entry: a date YYYY-MM-DD, an offered 'Landing ...' option, or 'Already in the UAE'), medical:<personId> (value: the chosen slot), documents:<dependantId> (value: what they confirmed). Bank facts go through save_profile; passports go through save_identity.",
     { key: { type: "string" }, value: { type: "string" } },
     ["key", "value"],
   ),
@@ -611,7 +611,7 @@ const EXECUTORS: Record<string, Executor> = {
       receipt: checkout?.receipt,
       filed: filedSummary(r.state, r.filed),
       authorised: checkout?.authorises,
-      note: "Say once that this is a sandbox with simulated filings and payment. Confirm the price is locked, that paying authorised the filings listed in the checkout, what's filed now, and that the clock moves with the tracker buttons (+2 weeks, Next event). If anything is waiting on the founder (the Hub71 OK, passports), ask for it.",
+      note: "Say once that this is a sandbox with simulated filings and payment. Confirm the price is locked, that paying authorised the filings listed in the checkout, what's filed now, and that the clock moves with the tracker buttons (+2 weeks, Next event). If anything is waiting on the founder (the Hub71 OK, passports, the signatory's first UAE entry date), ask for it, offering the options in waitingOnFounder.",
     });
   },
 

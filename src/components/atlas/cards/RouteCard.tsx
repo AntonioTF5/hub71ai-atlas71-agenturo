@@ -124,7 +124,9 @@ export function RouteCard({ data }: { data: RouteCardData }) {
         <CardSection label="Before filing">
           <ul className="divide-y divide-line overflow-clip rounded-xl border border-line">
             {prerequisites.map((p, i) => {
-              const st = PREREQ[p.state] ?? PREREQ.review;
+              const base = PREREQ[p.state] ?? PREREQ.review;
+              // "Atlas71 can apply for you, with your OK": the gap is a consent, not a missing document.
+              const st = p.state === "missing" && /with your ok/i.test(p.note ?? "") ? { tone: "gold" as Tone, label: "Needs your OK" } : base;
               return (
                 <li key={i} className="flex items-start gap-3 px-3.5 py-3">
                   <div className="min-w-0 flex-1">

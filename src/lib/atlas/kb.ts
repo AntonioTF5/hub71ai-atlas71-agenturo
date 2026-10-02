@@ -30,17 +30,52 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "adgm-fees",
-      "ADGM · Schedule of fees 2025",
+      "ADGM Registration Authority · Overview of Fees 2025",
       "https://assets.adgm.com/download/assets/Schedule+of+Fees+2025.pdf/6f25a452823d11ef808c3e0446867bce",
       "official",
-      "Tech Startup Licence $1,500 + $300 data protection. Standard non-financial licence $5,800 in year one, $5,300 renewal.",
+      "Version January 2025 (still current in Oct 2026). Tech Start-up $1,500 for up to 3 years (licence and two renewals), plus the $300 data protection fee. Category B (non-financial): name reservation $200, incorporation $300, commercial licence $200, business activity $4,800, data protection $300 = $5,800 in year one; $5,300 renewal plus a $100 confirmation statement.",
     ),
     source(
       "adgm-gs-fees",
-      "ADGM Government Services · Fee schedule",
-      "https://assets.adgm.com/download/assets/GS+Fee+Schedule+19.11.2024.pdf/0924d554643511efb4ba6646cc95a6ef",
+      "ADGM Government Services (ACCESSADGM) · Fee schedule 26.06.2026",
+      "https://assets.adgm.com/download/assets/GS+Fee+Schedule+26.06.2026.pdf/0924d554643511efb4ba6646cc95a6ef",
       "official",
-      "Establishment card AED 1,127.27. e-Channels AED 4,197.27. 2-year employment visa from abroad AED 3,237.39. Dependant visa AED 2,607.39 (18+) / 2,094.89 (under 18).",
+      "Fees in AED inclusive of VAT. New establishment card 1,127.27 (valid 3 years). New e-Channels account 4,197.27 (valid 1 year). New employment visa (outside UAE) 2 years 3,237.39; the work permit is included in the visa package. New dependant residence visa (outside UAE) above 18: 2,607.39; below 18: 2,094.89.",
+    ),
+    source(
+      "adgm-corporate-affairs",
+      "ADGM · Corporate affairs and government services",
+      "https://www.adgm.com/operating-in-adgm/visas-and-government-services/corporate-affairs-government-services",
+      "official",
+      "Visa quota per business-centre desk: Category A & B Standard 2, Innovation 3. Establishment card: standard processing 5 working days; e-Channels: 1 working day; employment visa: about 7 working days, excluding delays at the issuing authority.",
+    ),
+    source(
+      "adgm-signatory",
+      "ADGM Registration Authority · Private company checklist (non-financial)",
+      "https://assets.adgm.com/download/assets/Private+Company+Limited+by+Shares+-+Non-Financial+Services.pdf/c214f1f25a4411ef82f4b295bac3477d",
+      "official",
+      "At least one appointed signatory must be a UAE national, a GCC national or hold a valid UAE residence visa; people who have never entered the UAE can't be appointed, because immigration security clearance can't be processed.",
+    ),
+    source(
+      "adgm-licence-conditions",
+      "ADGM · Conditions of Licence Rules 2026(A)",
+      "https://en.adgm.thomsonreuters.com/sites/default/files/net_file_store/ADGM1547_30125_VER26062026.pdf",
+      "official",
+      "Rule 6(d): a licence holder must at all times maintain at least one authorised signatory who holds a UAE residency visa.",
+    ),
+    source(
+      "icp-establishment-card",
+      "ICP · Establishment card service",
+      "https://icp.gov.ae/en/services-details/?serviceid=64afe3c1035448005bd52e6d",
+      "official",
+      "A valid Emirates ID or a Unified Number (for visitors who don't yet have an Emirates ID) must be provided for one of the authorised signatories.",
+    ),
+    source(
+      "adgm-office-space",
+      "ADGM · Office spaces in the ADGM jurisdiction",
+      "https://www.adgm.com/operating-in-adgm/office-space",
+      "official",
+      "ADGM's list of office and business-centre providers on Al Maryah and Al Reem islands.",
     ),
     source(
       "adgm-faq",
@@ -51,10 +86,10 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "hub71-tsl",
-      "Hub71 · FAQs",
-      "https://www.hub71.com/faqs",
+      "ADGM · Setting-up FAQ (Tech Startup Licence)",
+      "https://www.adgm.com/faqs/setting-up",
       "official",
-      "The Hub71 eligibility letter is separate from the selective Access programme.",
+      "Every incentivised Tech Startup Licence application includes a Hub71 approval letter, applied for on the ADGM/Hub71 eligibility form (status update within 21 working days; no fee is published). It is separate from Hub71's selective Access programme, which can be applied for before or after.",
     ),
     source(
       "hub71-access",
@@ -68,7 +103,7 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
       "Masdar City Free Zone · Licences",
       "https://masdarcityfreezone.com/explore/license-and-registration",
       "official",
-      "Innovation package AED 12,000 + 5% VAT, flexi desk, 2-visa quota. UAE civil law.",
+      "Innovation package AED 12,000 + 5% VAT, up to 3 activities, flexi desk lease, 2-visa quota. Charges subject to 5% VAT.",
     ),
     source(
       "adra-dual",
@@ -96,7 +131,7 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
       "ICP · Emirates ID issuance",
       "https://icp.gov.ae/en/services-details/?serviceid=64afe3c1035448005bd52e5a",
       "official",
-      "Emirates ID issuance takes about 5 working days.",
+      "ICP lists 5 days for a new Emirates ID. Residents pay AED 100 per year of residence plus AED 100 service fee, and apply through the unified residence permit and Emirates ID application after a fit medical result.",
     ),
     source(
       "wio",
@@ -114,17 +149,17 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "desk-price",
-      "Aegis Coworking · ADGM dedicated desk",
-      "https://www.aegiscoworking.ae/blog/adgm-tech-startup-licence-dedicated-desk",
+      "My Coworking (Addax Tower, on ADGM's list) · Dedicated desk",
+      "https://www.mycoworking.ae/coworking",
       "secondary",
-      "An ADGM-compliant dedicated desk costs about AED 13,800/year.",
+      "Dedicated desk AED 1,200/month paid annually (AED 14,400 a year), plus a one-time AED 1,200 due-diligence fee. Other ADGM-listed centres publish AED 15,600 to 42,000 a year; ADGM itself publishes no desk price.",
     ),
     source(
       "golden-visa",
       "ADDED · Golden visa for entrepreneurs",
       "https://www.added.gov.ae/en/live/long-term-residency/abu-dhabi-golden-visa/for-entrepreneurs",
       "official",
-      "Incubator-endorsed founders can get a long-term visa. ADDED says 10 years, while ADGM's page says 5: confirm before relying on it.",
+      "Incubator-nominated founders can get a 10-year golden visa (ADDED, updated 24 Sep 2026; ICP and the Abu Dhabi Residents Office agree). u.ae's summary table still says 5 years, so ICP confirms the final term. ADGM mentions 5-year business visas for entrepreneurs through Hub71.",
     ),
     source(
       "apostille",
@@ -142,10 +177,10 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "seha-medical",
-      "Policybazaar · Medical fitness test",
-      "https://www.policybazaar.ae/health-insurance/articles/medical-fitness-test-in-abu-dhabi/",
-      "secondary",
-      "A residency medical fitness test costs about AED 250–350.",
+      "SEHA DPSC · Regular visa screening",
+      "https://dpsc.seha.ae/en-us/services/pages/visascreening.aspx",
+      "official",
+      "Regular visa screening is AED 250 for new and renewal applicants, results within 48 hours (fast track +AED 100). Applicants aged 18 and over only.",
     ),
     // Abu Dhabi vs home base comparison (researched and opened 2 Oct 2026)
     source(
@@ -161,6 +196,13 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
       "https://mof.gov.ae/corporate-tax/",
       "official",
       "A Qualifying Free Zone Person can benefit from a 0% CT rate on its Qualifying Income",
+    ),
+    source(
+      "uae-personal-tax",
+      "u.ae · Taxation",
+      "https://u.ae/en/information-and-services/finance-and-investment/taxation",
+      "official",
+      "The UAE does not levy income tax on individuals.",
     ),
     source(
       "pwc-uae-indiv",
@@ -209,7 +251,7 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
       "u.ae - Golden visa",
       "https://u.ae/en/information-and-services/visa-and-emirates-id/residence-visas/golden-visa",
       "official",
-      "Lists entrepreneurs under a 5-year golden visa (proof of innovative project, project value, incubator letter); holders can sponsor spouse and children",
+      "Summary table lists entrepreneurs at 5 years with an incubator letter (ICP, ADDED and ADRO say 10); holders can sponsor spouse and children",
     ),
     source(
       "uae-private-hours",
@@ -269,10 +311,10 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "numbeo-abudhabi",
-      "Numbeo - Abu Dhabi (updated 1 Oct 2026)",
+      "Numbeo - Abu Dhabi (crowd-sourced, accessed 2 Oct 2026)",
       "https://www.numbeo.com/cost-of-living/in/Abu-Dhabi",
       "secondary",
-      "International primary school avg AED 54,430/yr (range 30k-80k); 3BR city centre AED 14,243/month",
+      "International primary school avg AED 54,430/yr (range 30k-80k); 1BR city centre about AED 7,222/month (AED 60k-120k a year); 3BR city centre AED 14,243/month",
     ),
     source(
       "yalla-adek-outstanding",
@@ -321,7 +363,21 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
       "PwC WWTS - India individual other taxes",
       "https://taxsummaries.pwc.com/india/individual/other-taxes",
       "secondary",
-      "Employer matches employee 12% PF; 8.33% of salary (capped at INR 15,000/month) goes to pension fund (EPS)",
+      "Employer matches employee 12% PF; 8.33% of salary (capped at INR 15,000/month) goes to pension fund (EPS). PwC's page predates the Sep 2026 wage-ceiling change below.",
+    ),
+    source(
+      "pib-epf-ceiling",
+      "PIB · EPF wage ceiling raised to INR 25,000 (16 Sep 2026)",
+      "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2310811",
+      "official",
+      "The EPF/EPS wage ceiling rose from INR 15,000 to INR 25,000 a month from 17 Sep 2026.",
+    ),
+    source(
+      "uae-vat-reg",
+      "FTA · VAT Executive Regulation (consolidated, Sep 2026), Art. 31",
+      "https://tax.gov.ae//Datafolder/Files/Legislation/2026/Law-No-8-of-2017-and-its-amendments--09-2026.pdf",
+      "official",
+      "Services supplied to a recipient with no residence in the GCC who is outside the UAE when the services are performed are zero-rated, with an anti-avoidance carve-out.",
     ),
     source(
       "karnataka-hours",
@@ -339,10 +395,10 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "numbeo-bangalore",
-      "Numbeo - Bangalore (updated 28 Sep 2026)",
+      "Numbeo - Bangalore (crowd-sourced, accessed 2 Oct 2026)",
       "https://www.numbeo.com/cost-of-living/in/Bangalore",
       "secondary",
-      "1BR centre INR 29,720/mo; 3BR centre INR 75,870/mo; international primary school avg INR 311,471/yr (range 150k-1m)",
+      "1BR centre about AED 13.6k/yr (9.1k-18.3k); 3BR centre about AED 34.7k/yr; international primary school avg AED 11.9k/yr (5.7k-38.1k), converted at INR 26.23 per AED",
     ),
     source(
       "nestriqo-blr",
@@ -402,10 +458,10 @@ export const SOURCES: Record<string, Source> = Object.fromEntries(
     ),
     source(
       "numbeo-cairo",
-      "Numbeo - Cairo (updated 1 Oct 2026)",
+      "Numbeo - Cairo (crowd-sourced, accessed 2 Oct 2026)",
       "https://www.numbeo.com/cost-of-living/in/Cairo-Egypt",
       "secondary",
-      "1BR centre EGP 11,357/mo (8k-15k); 3BR centre EGP 27,400/mo (15k-60k)",
+      "1BR centre EGP 11,357/mo (8k-15k), about AED 9.6k/yr (6.7k-12.6k); 3BR centre EGP 27,400/mo (15k-60k), about AED 23.1k/yr (12.6k-50.6k). No 2-bed category.",
     ),
     source(
       "fx-er-api",
@@ -429,13 +485,13 @@ export const FEES = {
   atlas: 4900, // atlas-pricing
   establishmentCard: 5325, // 1,127.27 establishment card + 4,197.27 e-Channels
   visa: 3237, // 2-year employment visa from abroad
-  medical: 300,
+  medical: 250, // SEHA regular visa screening, adults 18+
   emiratesId: 300,
   dependantVisaAdult: 2607,
   dependantVisaChild: 2095,
-  dependantExtrasAdult: 600, // medical + Emirates ID
+  dependantExtrasAdult: 550, // medical 250 + Emirates ID 300
   dependantExtrasChild: 300,
-  desk: 13800, // per dedicated desk per year
+  desk: 14400, // per dedicated desk per year: My Coworking (ADGM-listed), AED 1,200/month paid annually
   dualLicence: 1200,
   bankPlanMonthly: 99,
   latePenalty: 10000,
@@ -463,7 +519,7 @@ export const ROUTES: Record<RouteId, RouteInfo> = {
     summary:
       "ADGM's licence for tech startups, under English common law. It's incentivised for up to 3 years, needs a Hub71 eligibility letter, and gives 3 visas per dedicated desk.",
     licenceAed: 6611,
-    licenceLabel: "ADGM Tech Startup Licence, year one ($1,500 + $300 data protection)",
+    licenceLabel: "ADGM Tech Startup Licence, year one ($1,500 + $300 data protection, per ADGM's Overview of Fees 2025)",
     law: "English common law",
     deskAed: FEES.desk,
     visasPerDesk: 3,
@@ -475,12 +531,12 @@ export const ROUTES: Record<RouteId, RouteInfo> = {
     id: "adgm_standard",
     name: "ADGM licence (non-financial)",
     summary:
-      "A standard ADGM non-financial licence, under English common law. Any lawful non-financial activity, including technology services, with 3 visas per dedicated desk.",
+      "A standard ADGM non-financial (Category B) licence, under English common law, for a permitted business activity such as technology services, with 2 visas per business-centre desk.",
     licenceAed: 21301,
     licenceLabel: "ADGM non-financial licence, year one ($5,800; $5,300 renewal)",
     law: "English common law",
     deskAed: FEES.desk,
-    visasPerDesk: 3, // assumption: the same desk rule as the startup licence
+    visasPerDesk: 2, // ADGM corporate affairs: Category A & B Standard 2 visas per business-centre desk
     includedVisas: null,
     fullyPriced: true,
     sources: ["adgm-fees", "adgm-faq"],
@@ -489,10 +545,10 @@ export const ROUTES: Record<RouteId, RouteInfo> = {
     id: "masdar",
     name: "Masdar City Free Zone · Innovation",
     summary:
-      "Masdar City's innovation package: a flexi desk and a 2-visa quota under UAE civil law. More visas need a bigger package, quoted by the free zone.",
+      "Masdar City's innovation package: a flexi desk and a 2-visa quota. More visas need a bigger package, quoted by the free zone.",
     licenceAed: 12600,
     licenceLabel: "Masdar Innovation package (AED 12,000 + 5% VAT, flexi desk, 2 visas)",
-    law: "UAE civil law",
+    law: "Governed by UAE federal and Abu Dhabi law, not ADGM's English common law",
     deskAed: null,
     visasPerDesk: null,
     includedVisas: 2,
@@ -503,7 +559,7 @@ export const ROUTES: Record<RouteId, RouteInfo> = {
 
 // ---------- Steps ----------
 export type StepScope = "company" | "person" | "dependant";
-export type StepInput = "medical_slot" | "documents" | "bank_facts";
+export type StepInput = "medical_slot" | "documents" | "bank_facts" | "entry_date";
 
 export interface StepInfo {
   id: StepId;
@@ -526,9 +582,9 @@ export const STEPS: Record<StepId, StepInfo> = {
     group: "Company",
     scope: "company",
     provider: "Hub71",
-    days: [14, 28],
-    sim: 14,
-    note: "Separate from the selective Access programme.",
+    days: [14, 29],
+    sim: 14, // the demo compresses the wait: the form promises a status update within 21 working days (about 29 calendar days)
+    note: "Separate from the selective Access programme. The form promises a status update within 21 working days.",
     sources: ["adgm-tsl", "hub71-tsl"],
   },
   desk: {
@@ -539,8 +595,20 @@ export const STEPS: Record<StepId, StepInfo> = {
     provider: "ADGM-zone coworking",
     days: [1, 7],
     sim: 2,
-    note: "ADGM needs a dedicated desk; hot desks don't count.",
-    sources: ["adgm-faq", "desk-price"],
+    note: "ADGM needs a dedicated desk or office; hot desks don't count.",
+    sources: ["adgm-faq", "adgm-office-space", "desk-price"],
+  },
+  signatory_entry: {
+    id: "signatory_entry",
+    title: "Signatory's first UAE entry",
+    group: "Company",
+    scope: "company",
+    provider: "You · visit visa",
+    days: [0, 14],
+    sim: 0,
+    input: "entry_date",
+    note: "ADGM appoints authorised signatories only after immigration clearance, so one founder enters the UAE once before incorporation; a Unified Number is issued on entry.",
+    sources: ["adgm-signatory", "icp-establishment-card", "adgm-licence-conditions"],
   },
   incorporation: {
     id: "incorporation",
@@ -560,9 +628,10 @@ export const STEPS: Record<StepId, StepInfo> = {
     scope: "company",
     provider: "ADGM Government Services",
     masdarProvider: "Masdar City Free Zone",
-    days: [5, 14],
-    sim: 5,
-    sources: ["adgm-gs-fees"],
+    days: [7, 14],
+    sim: 7,
+    note: "ADGM's standard timeline: 5 working days for the card, then 1 for e-Channels.",
+    sources: ["adgm-gs-fees", "adgm-corporate-affairs"],
   },
   tax_registration: {
     id: "tax_registration",
@@ -570,9 +639,9 @@ export const STEPS: Record<StepId, StepInfo> = {
     group: "Money & tax",
     scope: "company",
     provider: "FTA · EmaraTax",
-    days: [3, 20],
+    days: [3, 28],
     sim: 5,
-    note: "Due within 3 months of incorporation; AED 10,000 penalty if late.",
+    note: "Due within 3 months of incorporation; AED 10,000 penalty if late (waived if the first return is filed within 7 months of the first tax period's end). FTA processes it within 20 business days.",
     sources: ["fta-ct", "mof-penalty"],
   },
   entry_permit: {
@@ -658,6 +727,7 @@ export const STEPS: Record<StepId, StepInfo> = {
 export const STEP_ORDER: StepId[] = [
   "hub71_letter",
   "desk",
+  "signatory_entry",
   "incorporation",
   "establishment_card",
   "tax_registration",
@@ -671,7 +741,7 @@ export const STEP_ORDER: StepId[] = [
 ];
 
 export const GROUPS: { label: StepGroup; steps: StepId[] }[] = [
-  { label: "Company", steps: ["hub71_letter", "desk", "incorporation", "establishment_card"] },
+  { label: "Company", steps: ["hub71_letter", "desk", "signatory_entry", "incorporation", "establishment_card"] },
   { label: "People", steps: ["entry_permit", "medical", "emirates_id", "dependant_visa"] },
   { label: "Money & tax", steps: ["tax_registration", "bank_file", "bank_account", "payments"] },
 ];
@@ -685,6 +755,7 @@ export const INCLUDED = [
 ];
 
 export const EXCLUDED = [
+  "Coworking centre due-diligence fee (about AED 1,200 once) and ADGM lease registration",
   "Health insurance (required for residence visas; quoted by the insurer)",
   "Housing and school fees",
   "Legalisation of home-country documents",

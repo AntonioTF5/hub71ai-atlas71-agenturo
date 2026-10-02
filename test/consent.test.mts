@@ -8,6 +8,7 @@ import {
   monthsValid,
   provideInput,
   sandboxIdentities,
+  signatoryOf,
   saveIdentities,
   startLanding,
   stepInstances,
@@ -36,7 +37,8 @@ function routely(): CaseState {
       { relation: "child", sponsorName: "Meera", name: "Anya" },
     ],
   });
-  return { ...state, route: "adgm_tsl" };
+  const sig = signatoryOf(state.profile)!;
+  return { ...state, route: "adgm_tsl", inputs: { ...state.inputs, [`entry:${sig.id}`]: START } };
 }
 
 const status = (s: CaseState) => stepStatuses(s, stepInstances(s, "adgm_tsl"));

@@ -59,12 +59,15 @@ export function PriceCard({ data }: { data: PriceCardData }) {
 
   const partial = ui.isPartial(data);
   const live = ui.livePrice;
-  const paid = data.paid || (!!ui.state.paid && !!live && live.routeName === data.routeName);
+  // A card shows the state it was shown in: only a card built after payment says "Paid".
+  const paid = !!data.paid;
   const paidOn = ui.state.paid?.on;
-  const total = paid && ui.state.paid ? ui.state.paid.amountAed : data.totalAed;
-  const otherRoute = !paid && !!live && live.routeName !== data.routeName;
-  const outOfDate = !paid && !partial && !!live && !otherRoute && live.totalAed !== data.totalAed;
-  const payable = !paid && !partial && !!live && !otherRoute && !outOfDate;
+  // The case was paid after this card was shown: no second Confirm & pay, and no retroactive stamp.
+  const paidLater = !paid && !!ui.state.paid;
+  const total = data.totalAed;
+  const otherRoute = !paid && !paidLater && !!live && live.routeName !== data.routeName;
+  const outOfDate = !paid && !paidLater && !partial && !!live && !otherRoute && live.totalAed !== data.totalAed;
+  const payable = !paid && !paidLater && !partial && !!live && !otherRoute && !outOfDate;
   const lines = data.lines ?? [];
 
   const pay = () => {
@@ -161,7 +164,7 @@ export function PriceCard({ data }: { data: PriceCardData }) {
       ) : null}
 
       {payable ? (
-        <div className="sticky bottom-3 z-10 -mx-1 mt-6 rounded-[18px] bg-surface/90 p-1 backdrop-blur-sm">
+        <div className="sticky bottom-3 z-10 -mx-1 mt-6 rounded-[18px] bg-surface p-1 pb-2 shadow-[0_-14px_18px_-14px_rgb(16_24_40/0.16)]">
           <button
             type="button"
             onClick={pay}
@@ -171,8 +174,17 @@ export function PriceCard({ data }: { data: PriceCardData }) {
             {clicked && ui.busy ? <Spinner size={18} /> : null}
             Confirm &amp; pay {aed(total)}
           </button>
-          <p className="mt-2 text-center text-[12px] text-muted">Simulated checkout in the sandbox. No card is charged.</p>
+          <p className="mt-2 text-pretty text-center text-[12.5px] leading-snug text-muted">
+            Paying authorises Atlas71 to file the steps in your plan on your behalf. Nothing is filed before you pay.
+          </p>
+          <p className="mt-1 text-center text-[12px] text-muted">Simulated checkout in the sandbox. No card is charged.</p>
         </div>
+      ) : null}
+
+      {paidLater && ui.state.paid ? (
+        <p className="mt-6 text-[14px] leading-snug text-muted">
+          Paid{isIsoDate(ui.state.paid.on) ? ` ${fmtDay(ui.state.paid.on)}` : ""} · see the receipt below.
+        </p>
       ) : null}
 
       {paid ? (
@@ -184,7 +196,7 @@ export function PriceCard({ data }: { data: PriceCardData }) {
         </p>
       ) : null}
 
-      {partial && !paid ? (
+      {partial && !paid && !paidLater ? (
         <Notice tone="neutral" icon={<IconInfo size={17} className="text-muted" />} className="mt-6">
           Visa and establishment-card fees come from the free zone&apos;s own quote, so this route can&apos;t be paid here yet.
         </Notice>

@@ -4,7 +4,7 @@
 export type RouteId = "adgm_tsl" | "adgm_standard" | "masdar";
 
 export type StepId =
-  | "hub71_letter" | "desk" | "incorporation" | "establishment_card" | "tax_registration"
+  | "hub71_letter" | "desk" | "signatory_entry" | "incorporation" | "establishment_card" | "tax_registration"
   | "entry_permit" | "medical" | "emirates_id" | "dependant_visa"
   | "bank_file" | "bank_account" | "payments";
 

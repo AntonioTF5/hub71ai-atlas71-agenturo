@@ -26,7 +26,7 @@ export interface HomeBase {
   name: string;
   match: RegExp;
   cells: Record<CellKey, Cell>;
-  rentFamilyAed: [number, number]; // 2-bed, 12 months
+  rentFamilyAed: [number, number]; // 2-bed (Egypt: 3-bed, the only family size sourced), 12 months
   rentSingleAed: [number, number]; // 1-bed, 12 months
   schoolAed: [number, number] | null; // international school, per child per year
   socialSecurityEdge: CompareRow["edge"];
@@ -44,8 +44,8 @@ export const UAE: Record<CellKey, Cell> & {
     text: "0% on profit up to AED 375k, 9% above; 0% only on qualifying free-zone income",
     sources: ["uae-ct-rates", "mof-ct"],
   },
-  personalTax: { text: "No personal income tax on salaries", sources: ["pwc-uae-indiv"] },
-  vat: { text: "5% VAT", sources: ["uae-vat"] },
+  personalTax: { text: "No personal income tax on salaries", sources: ["uae-personal-tax"] },
+  vat: { text: "5% VAT; services exported to non-GCC clients abroad are zero-rated", sources: ["uae-vat", "uae-vat-reg"] },
   socialSecurity: {
     text: "None for non-GCC staff; an end-of-service gratuity instead (21 days' basic pay a year)",
     sources: ["uae-expat-pension", "adgm-eao-faq"],
@@ -60,20 +60,20 @@ export const UAE: Record<CellKey, Cell> & {
     sources: ["uae-work-visa", "uae-family-visa"],
   },
   longTermVisa: {
-    text: "Golden visa for incubator-backed founders: 5 to 10 years (official pages differ)",
+    text: "Golden visa for incubator-nominated founders: 10 years per ICP and ADDED (u.ae still lists 5)",
     sources: ["golden-visa", "uae-golden-visa"],
   },
   workWeek: {
-    text: "Employer sets the weekend; most firms work Monday to Friday; 48-hour cap",
+    text: "Most private firms close only on Sundays, others also Saturdays; 48-hour week cap",
     sources: ["uae-private-hours", "uae-fact-sheet"],
   },
   languageLaw: {
     text: "Arabic official, English in business; ADGM courts apply English common law",
     sources: ["uae-fact-sheet", "adgm-common-law"],
   },
-  costOfLiving: { text: "Higher: a 2-bed on Al Reem is AED 95k–155k a year", sources: ["bayut-reem", "pf-reem-2br"] },
-  rentFamilyAed: [95_000, 155_000],
-  rentSingleAed: [60_000, 90_000], // estimate: no verified 1-bed range, below Al Reem 2-bed listings
+  costOfLiving: { text: "Higher: a 2-bed on Al Reem averages about AED 119k–139k a year", sources: ["bayut-reem", "pf-reem-2br"] },
+  rentFamilyAed: [119_000, 139_000], // Property Finder typical 2BR 119k-130k; MyBayut Al Reem 2BR averages 126k-139k
+  rentSingleAed: [87_000, 98_000], // Numbeo 1BR centre avg 86.7k; MyBayut Al Reem 1BR averages 91k-98k
   schoolAed: [30_000, 80_000],
   costSources: ["bayut-reem", "pf-reem-2br", "numbeo-abudhabi", "yalla-adek-outstanding", "doh-law-23"],
 };
@@ -86,19 +86,19 @@ export const HOME_BASES: HomeBase[] = [
     cells: {
       corporateTax: { text: "About 25.2% (22% + surcharge + cess)", sources: ["pwc-india-cit"] },
       personalTax: { text: "Up to about 39% (30% top slab + surcharge + cess)", sources: ["pwc-india-pit"] },
-      vat: { text: "18% GST on software services", sources: ["pwc-india-other", "xflow-gst"] },
-      socialSecurity: { text: "Employer pays 12% of basic pay to EPF", sources: ["pwc-india-indiv-other"] },
+      vat: { text: "18% GST on software services; exports zero-rated under a bond or LUT", sources: ["pwc-india-other", "xflow-gst"] },
+      socialSecurity: { text: "Employer pays 12% of basic pay to EPF (wage ceiling INR 25,000 a month since Sep 2026)", sources: ["pwc-india-indiv-other", "pib-epf-ceiling"] },
       ecosystem: { text: "Deep home ecosystem: 2.23 lakh+ recognised startups", sources: ["pib-startups"] },
-      market: { text: "Huge home market; Gulf sales handled from abroad", sources: ["pib-startups"] },
+      market: { text: "Home market plus Gulf customers served from abroad", sources: [] },
       residency: { text: "Home country: no visas", sources: [] },
       longTermVisa: { text: "Not needed", sources: [] },
-      workWeek: { text: "Tech firms mostly Monday to Friday; 48-hour cap in Karnataka", sources: ["karnataka-hours"] },
+      workWeek: { text: "48-hour week cap in Karnataka (9 hours a day)", sources: ["karnataka-hours"] },
       languageLaw: { text: "English in business; common-law courts", sources: [] },
-      costOfLiving: { text: "Lower: a 2BHK in Koramangala or HSR is about AED 16k–27k a year", sources: ["nestriqo-blr", "numbeo-bangalore"] },
+      costOfLiving: { text: "Lower: a 2BHK in Koramangala or HSR is about AED 13k–27k a year", sources: ["nestriqo-blr", "numbeo-bangalore"] },
     },
-    rentFamilyAed: [16_000, 27_500],
-    rentSingleAed: [9_000, 16_000],
-    schoolAed: [11_400, 32_400],
+    rentFamilyAed: [12_800, 26_500], // NestRiqo: HSR 28k-48k, Koramangala 35k-58k INR a month
+    rentSingleAed: [9_100, 18_300], // Numbeo 1BR centre range
+    schoolAed: [5_700, 38_100], // Numbeo international primary school range (avg 11.9k)
     socialSecurityEdge: "abu_dhabi",
     lawEdge: "even",
     costSources: ["nestriqo-blr", "numbeo-bangalore", "fx-er-api"],
@@ -110,7 +110,7 @@ export const HOME_BASES: HomeBase[] = [
     cells: {
       corporateTax: { text: "22.5%", sources: ["pwc-egypt-cit"] },
       personalTax: { text: "Up to 27.5%", sources: ["pwc-egypt-pit"] },
-      vat: { text: "14% VAT", sources: ["pwc-egypt-other"] },
+      vat: { text: "14% VAT; exported services zero-rated", sources: ["pwc-egypt-other"] },
       socialSecurity: { text: "Employer pays 18.75% social insurance", sources: ["pwc-egypt-indiv-other"] },
       ecosystem: { text: "Cost-competitive talent; US$4.8bn digital exports in 2025", sources: ["itida-outlook"] },
       market: { text: "Large home market; Gulf clients served from Cairo", sources: [] },
@@ -118,10 +118,10 @@ export const HOME_BASES: HomeBase[] = [
       longTermVisa: { text: "Not needed", sources: [] },
       workWeek: { text: "Sunday to Thursday; Friday–Saturday weekend; 48-hour cap", sources: ["egypt-weekend", "egypt-labour-hours"] },
       languageLaw: { text: "Arabic; civil-law courts", sources: [] },
-      costOfLiving: { text: "Much lower: central Cairo 1–2 bed is about AED 7k–25k a year", sources: ["numbeo-cairo"] },
+      costOfLiving: { text: "Much lower: a central Cairo 1-bed is about AED 6.7k–12.6k a year, a 3-bed 12.6k–50.6k", sources: ["numbeo-cairo"] },
     },
-    rentFamilyAed: [12_600, 33_700],
-    rentSingleAed: [6_700, 25_300],
+    rentFamilyAed: [12_600, 50_600], // Numbeo has no 2-bed category: the 3-bed centre range
+    rentSingleAed: [6_700, 12_600],
     schoolAed: null,
     socialSecurityEdge: "abu_dhabi",
     lawEdge: "abu_dhabi",

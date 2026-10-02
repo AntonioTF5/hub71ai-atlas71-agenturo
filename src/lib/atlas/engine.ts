@@ -67,8 +67,19 @@ export function relocating(profile: Profile): Person[] {
   return profile.people.filter((p) => p.relocating);
 }
 
-export function deskCount(profile: Profile): number {
-  return Math.max(1, Math.ceil(relocating(profile).length / 3));
+/** Visas one business-centre desk carries on this route (ADGM: Innovation 3, Category B standard 2). */
+export function visasPerDesk(route: RouteId): number {
+  return ROUTES[route].visasPerDesk ?? 3;
+}
+
+export function deskCount(profile: Profile, route: RouteId): number {
+  return Math.max(1, Math.ceil(relocating(profile).length / visasPerDesk(route)));
+}
+
+/** The founder whose first UAE entry lets ADGM appoint an authorised signatory (a relocating founder first). */
+export function signatoryOf(profile: Profile): Person | undefined {
+  const founders = profile.people.filter((p) => p.role === "founder");
+  return founders.find((p) => p.relocating) ?? relocating(profile)[0] ?? founders[0] ?? profile.people[0];
 }
 
 export function dayNumber(state: CaseState): number {
@@ -243,10 +254,10 @@ export function decideRoute(
 function alternativeWhy(state: CaseState, chosen: RouteId, alt: RouteId): string {
   const p = state.profile;
   const n = relocating(p).length;
-  const desks = deskCount(p);
+  const desks = deskCount(p, chosen);
   const deskCost = desks * FEES.desk;
   if (alt === "adgm_standard") {
-    return "The fallback if the Hub71 letter doesn't come through: any non-financial activity, the same desk rule, a higher licence fee.";
+    return `The fallback if the Hub71 letter doesn't come through: a permitted non-financial activity, a higher licence fee, and ${visasPerDesk("adgm_standard")} visas per desk instead of ${visasPerDesk("adgm_tsl")}.`;
   }
   if (alt === "masdar") {
     const chosenSetup = ROUTES[chosen].licenceAed + (ROUTES[chosen].deskAed ? deskCost : 0);
@@ -256,7 +267,7 @@ function alternativeWhy(state: CaseState, chosen: RouteId, alt: RouteId): string
         ? `2 visas included; moving ${n} people needs a bigger package, quoted by the free zone`
         : "2 visas included, with visa fees quoted by the free zone";
     const saving = diff > 0 ? `${aed(diff)} less on licence and ${desks > 1 ? "desks" : "desk"}, with a flexi desk included. ` : "";
-    return `${saving}${visas}. UAE civil law instead of common law.`;
+    return `${saving}${visas}. Not ADGM's English common law.`;
   }
   return ROUTES[alt].summary;
 }
@@ -298,11 +309,17 @@ export function routeCard(state: CaseState, fit: FitResult): RouteCardData {
     );
   }
   if (route === "adgm_tsl" || route === "adgm_standard") {
-    const desks = deskCount(p);
+    const desks = deskCount(p, route);
     prerequisites.push({
       label: desks > 1 ? `${desks} dedicated desks` : "Dedicated desk",
       state: "missing",
-      note: `Required: ${aed(FEES.desk)} a year each, 3 visas per desk; hot desks don't count. Atlas71 books it [source:adgm-faq].`,
+      note: `Required: ${aed(FEES.desk)} a year each, ${visasPerDesk(route)} visas per desk; hot desks don't count. Atlas71 books it [source:adgm-corporate-affairs].`,
+    });
+    const sig = signatoryOf(p);
+    prerequisites.push({
+      label: "One trip to the UAE before incorporation",
+      state: "missing",
+      note: `ADGM appoints an authorised signatory only after their first UAE entry, so ${sig ? firstName(sig.name) : "one founder"} visits once; Atlas71 times the filing to it [source:adgm-signatory].`,
     });
   }
   if (route === "masdar") {
@@ -375,6 +392,8 @@ export function stepInstances(state: CaseState, route: RouteId): StepInstance[] 
   const incDeps: string[] = [];
   if (route === "adgm_tsl" && p.hub71Letter !== "have") incDeps.push(add("hub71_letter", []));
   if (adgm) incDeps.push(add("desk", []));
+  const sig = signatoryOf(p);
+  if (adgm && sig) incDeps.push(add("signatory_entry", [], sig.id));
   const inc = add("incorporation", incDeps);
   const est = add("establishment_card", [inc]);
   add("tax_registration", [inc]);
@@ -507,6 +526,8 @@ function inputMissing(state: CaseState, inst: StepInstance): boolean {
     case "hub71_letter":
       // Atlas71 applies on the founder's behalf only with their explicit OK.
       return state.profile.hub71Letter !== "applied" && state.inputs["consent:hub71_letter"] !== "yes";
+    case "signatory_entry":
+      return !isIsoDate(state.inputs[`entry:${inst.subjectId}`]);
     case "incorporation":
       return identityMissingFor(state, kycSubjects(state, "incorporation")).length > 0;
     case "entry_permit":
@@ -541,7 +562,7 @@ function stepFee(state: CaseState, route: RouteId, inst: StepInstance): number |
   const full = ROUTES[route].fullyPriced;
   switch (inst.step) {
     case "desk":
-      return deskCount(state.profile) * FEES.desk;
+      return deskCount(state.profile, route) * FEES.desk;
     case "incorporation":
       return ROUTES[route].licenceAed;
     case "establishment_card":
@@ -581,8 +602,12 @@ function stepNote(state: CaseState, route: RouteId, inst: StepInstance, status: 
           : `Needs your OK before Atlas71 applies. ${base}`;
     case "desk": {
       const n = relocating(p).length;
-      const desks = deskCount(p);
-      return `${desks} ${desks > 1 ? "desks" : "desk"} for ${n} ${n === 1 ? "visa" : "visas"} (3 per desk). ${base}`;
+      const desks = deskCount(p, route);
+      return `${desks} ${desks > 1 ? "desks" : "desk"} for ${n} ${n === 1 ? "visa" : "visas"} (${visasPerDesk(route)} per desk). ${base}`;
+    }
+    case "signatory_entry": {
+      const on = state.inputs[`entry:${inst.subjectId}`];
+      return isIsoDate(on) ? `${on <= state.today ? "In the UAE since" : "Landing"} ${fmtDate(on)}. ${base}` : `Tell Atlas71 when you first land. ${base}`;
     }
     case "medical":
       return status === "needs_input"
@@ -737,7 +762,7 @@ export function quote(state: CaseState, routeOverride?: RouteId): PriceCardData 
     if (kids) {
       lines.push({ label: "Dependant visa + medical + Emirates ID · child", qty: kids, unitAed: childUnit, amountAed: kids * childUnit, group: "Government", sourceId: "adgm-gs-fees" });
     }
-    const desks = deskCount(p);
+    const desks = deskCount(p, route);
     lines.push({ label: "Dedicated desk, 12 months", qty: desks, unitAed: FEES.desk, amountAed: desks * FEES.desk, group: "Provider", sourceId: "desk-price" });
   }
   const total = lines.reduce((sum, l) => sum + l.amountAed, 0);
@@ -773,6 +798,8 @@ function refFor(state: CaseState, route: RouteId, inst: StepInstance, filedOn: s
       return `H71-EL-${yy}-${digits(seed, 5)}`;
     case "desk":
       return `CWK-${yy}-${digits(seed, 5)}`;
+    case "signatory_entry":
+      return `UID-${digits(seed, 9)}`;
     case "incorporation":
       return masdar ? `MCFZ-LIC-${year}-${digits(seed, 5)}` : `ADGM-RA-${year}-${digits(seed, 5)}`;
     case "establishment_card":
@@ -806,6 +833,7 @@ function filedText(state: CaseState, f: Filing): string {
   const what: Record<StepId, string> = {
     hub71_letter: "Applied for the Hub71 eligibility letter",
     desk: "Reserved the dedicated desk",
+    signatory_entry: `Noted the first UAE entry${forWho}`,
     incorporation: "Filed incorporation and the commercial licence",
     establishment_card: "Filed the establishment card and e-Channels",
     tax_registration: "Filed corporate tax registration",
@@ -817,6 +845,9 @@ function filedText(state: CaseState, f: Filing): string {
     bank_account: "Applied for the business bank account",
     payments: "Applied for payments",
   };
+  if (f.step === "signatory_entry") {
+    return `${who ?? "The signatory"} lands ${fmtDay(f.etaOn)}; Atlas71 files incorporation once ADGM can see the entry`;
+  }
   return `${what[f.step]} with ${f.provider} (${f.ref}), ETA ${fmtDate(f.etaOn)}`;
 }
 
@@ -827,7 +858,9 @@ function issuedText(state: CaseState, f: Filing): string {
     case "hub71_letter":
       return "Hub71 eligibility letter issued";
     case "desk":
-      return `Dedicated desk lease signed (${deskCount(p)} ${deskCount(p) > 1 ? "desks" : "desk"})`;
+      return `Dedicated desk lease signed (${isRoute(state.route) && deskCount(p, state.route) > 1 ? `${deskCount(p, state.route)} desks` : "1 desk"})`;
+    case "signatory_entry":
+      return withWho("First UAE entry recorded: ADGM can now appoint the authorised signatory", who);
     case "incorporation":
       return `Licence issued: ${p.company ?? "the company"} is incorporated with ${f.provider}`;
     case "establishment_card":
@@ -856,6 +889,8 @@ function needsInputText(state: CaseState, inst: StepInstance): string {
   switch (inst.step) {
     case "hub71_letter":
       return "Approve the Hub71 eligibility letter application";
+    case "signatory_entry":
+      return `When does ${who ?? "the signatory"} first land in the UAE? ADGM needs one entry before incorporation`;
     case "incorporation":
       return `Passport details for ${joinAnd(identityMissingFor(state, kycSubjects(state, "incorporation")).map((x) => x.who))} (shareholders and directors)`;
     case "entry_permit":
@@ -898,7 +933,27 @@ export function fileReady(input: CaseState): SimResult {
   const events: SimEvent[] = [];
   for (const inst of insts) {
     const st = status[inst.id];
-    if (st === "ready" && inst.step !== "bank_file") {
+    if (st === "ready" && inst.step === "signatory_entry") {
+      // Not a filing: the founder travels. Done on the entry date (today if they're already in the UAE).
+      const on = state.inputs[`entry:${inst.subjectId}`];
+      const landed = on <= state.today;
+      const f: Filing = {
+        id: inst.id,
+        step: inst.step,
+        subjectId: inst.subjectId,
+        provider: providerFor(route, inst.step),
+        ref: refFor(state, route, inst, state.today),
+        filedOn: state.today,
+        etaOn: landed ? state.today : on,
+        status: landed ? "done" : "filed",
+        doneOn: landed ? state.today : undefined,
+      };
+      state.filings.push(f);
+      const ev: SimEvent = landed
+        ? { on: state.today, kind: "issued", text: issuedText(state, f), step: f.step, subjectId: f.subjectId }
+        : { on: state.today, kind: "filed", text: filedText(state, f), step: f.step, subjectId: f.subjectId };
+      events.push(ev);
+    } else if (st === "ready" && inst.step !== "bank_file") {
       const f: Filing = {
         id: inst.id,
         step: inst.step,
@@ -994,13 +1049,38 @@ export function medicalSlots(state: CaseState): string[] {
   return [`${d}, 09:00 · SEHA Al Bateen`, `${d}, 11:30 · SEHA Khalifa City`, `${d}, 14:30 · SEHA Mussafah`];
 }
 
+/** Arrival choices for the signatory's first UAE entry: already here, or a landing date. */
+export function entryOptions(state: CaseState): string[] {
+  return ["Already in the UAE", `Landing ${fmtDay(addDays(state.today, 7))}`, `Landing ${fmtDay(addDays(state.today, 12))}`];
+}
+
+/** The entry date a founder's answer means: an ISO date, "already here", or one of the offered landing days. */
+export function entryDate(state: CaseState, answer: string): string | null {
+  const a = answer.trim();
+  const iso = /\b(\d{4}-\d{2}-\d{2})\b/.exec(a)?.[1];
+  if (iso && isIsoDate(iso)) return iso < state.today ? state.today : iso;
+  if (/already|in the uae|here now|i'?m here|today/i.test(a)) return state.today;
+  for (let d = 0; d <= 90; d++) {
+    const on = addDays(state.today, d);
+    if (a.toLowerCase().includes(fmtDay(on).toLowerCase()) || a.toLowerCase().endsWith(fmtDate(on).toLowerCase())) return on;
+  }
+  return null;
+}
+
 /** Resolve `medical:<personId>` / `documents:<dependantId>`, also accepting a name instead of the id. */
 export function resolveInputKey(state: CaseState, key: string): string | null {
   if (key.trim() === "consent:hub71_letter") return "consent:hub71_letter";
-  const m = /^(medical|documents):(.+)$/.exec(key.trim());
+  const m = /^(medical|documents|entry):(.+)$/.exec(key.trim());
   if (!m) return null;
   const [, kind, ref] = m;
   const want = ref.trim().toLowerCase();
+  if (kind === "entry") {
+    const sig = signatoryOf(state.profile);
+    const person =
+      state.profile.people.find((p) => p.id === ref) ??
+      state.profile.people.find((p) => p.name.toLowerCase() === want || firstName(p.name).toLowerCase() === want);
+    return sig && (!person || person.id === sig.id) ? `entry:${sig.id}` : null;
+  }
   if (kind === "medical") {
     const person =
       state.profile.people.find((p) => p.id === ref) ??
@@ -1018,10 +1098,15 @@ export function resolveInputKey(state: CaseState, key: string): string | null {
 export function provideInput(input: CaseState, key: string, value: string): SimResult & { key?: string; error?: string } {
   const resolved = resolveInputKey(input, key);
   if (!resolved) {
-    return { state: input, filed: [], events: [], error: `Unknown input key "${key}". Use consent:hub71_letter, medical:<personId> or documents:<dependantId>.` };
+    return { state: input, filed: [], events: [], error: `Unknown input key "${key}". Use consent:hub71_letter, entry:<founderId>, medical:<personId> or documents:<dependantId>.` };
   }
   let v = value.trim().slice(0, 200);
   if (!v) return { state: input, filed: [], events: [], error: "The value is empty." };
+  if (resolved.startsWith("entry:")) {
+    const on = entryDate(input, v);
+    if (!on) return { state: input, filed: [], events: [], error: "Give the entry date as YYYY-MM-DD, or say they're already in the UAE." };
+    v = on;
+  }
   // Consent is a yes only when the founder clearly said yes.
   if (resolved.startsWith("consent:")) v = /^(y|yes|ok|okay|sure|approve|approved|apply|please|go ahead|true)\b/i.test(v) ? "yes" : "no";
   const state = clone(input);
@@ -1107,6 +1192,8 @@ export function waitingItems(state: CaseState): WaitingItem[] {
     }
     if (inst.step === "hub71_letter") {
       out.push({ key: "consent:hub71_letter", label: needsInputText(state, inst), options: CONSENT_OPTIONS });
+    } else if (inst.step === "signatory_entry") {
+      out.push({ key: `entry:${inst.subjectId}`, label: needsInputText(state, inst), options: entryOptions(state) });
     } else if (inst.step === "medical") {
       out.push({ key: `medical:${inst.subjectId}`, label: needsInputText(state, inst), options: medicalSlots(state) });
     } else if (inst.step === "dependant_visa" && !state.inputs[`documents:${inst.subjectId}`]) {
@@ -1202,7 +1289,7 @@ export function authorisations(state: CaseState, route: RouteId): string[] {
   const company = p.company ?? "the company";
   const movers = relocating(p).map((x) => x.name);
   const deps = p.dependants.map((d) => dependantLabel(p, d).replace(/ \(.*\)$/, ""));
-  const desks = deskCount(p);
+  const desks = deskCount(p, route);
   const out: string[] = [];
   if (route === "adgm_tsl" && p.hub71Letter !== "have" && state.inputs["consent:hub71_letter"] === "yes") {
     out.push("Apply to Hub71 for the eligibility letter");

@@ -8,6 +8,7 @@ import { CheckoutCard } from "./CheckoutCard";
 import { CompareCard } from "./CompareCard";
 import { ExportCard } from "./ExportCard";
 import { FilingsCard } from "./FilingsCard";
+import { IdentityCard } from "./IdentityCard";
 import { PlanCard } from "./PlanCard";
 import { PriceCard } from "./PriceCard";
 import { RouteCard } from "./RouteCard";
@@ -58,6 +59,8 @@ function CardBody({ card, live }: { card: Card; live: boolean }) {
       return <CompareCard data={card.data} />;
     case "checkout":
       return <CheckoutCard data={card.data} live={live} />;
+    case "identity":
+      return <IdentityCard data={card.data} />;
     default:
       return null;
   }

@@ -161,10 +161,15 @@ export function TrackerPanel({
               </span>
               Waiting on you
             </p>
-            <ul className="mt-1.5 space-y-1">
+            <ul className={cx("mt-2", waiting.length > 1 ? "space-y-2" : undefined)}>
               {waiting.map((w, i) => (
-                <li key={i} className="text-pretty text-[14px] leading-snug text-ink">
-                  <RichInline text={w} />
+                <li key={i} className="flex gap-2.5 text-pretty text-[14px] leading-snug text-ink">
+                  {waiting.length > 1 ? (
+                    <span aria-hidden="true" className="mt-[7px] size-1.5 shrink-0 rounded-full bg-gold" />
+                  ) : null}
+                  <span className="min-w-0">
+                    <RichInline text={w} />
+                  </span>
                 </li>
               ))}
             </ul>

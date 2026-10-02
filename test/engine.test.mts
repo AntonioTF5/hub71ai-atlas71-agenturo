@@ -13,6 +13,7 @@ import {
   provideInput,
   quote,
   sandboxIdentities,
+  signatoryOf,
   startLanding,
   stepInstances,
   stepStatuses,
@@ -48,7 +49,9 @@ function routely(arjunMoves = false): CaseState {
   });
   assert.deepEqual(errors, []);
   // Meera has OK'd the Hub71 letter and the sandbox passports are on file, so no filing waits on either.
-  const s: CaseState = { ...state, route: "adgm_tsl", inputs: { ...state.inputs, "consent:hub71_letter": "yes" } };
+  // The signatory is already in the UAE, so incorporation isn't held for a first entry.
+  const sig = signatoryOf(state.profile)!;
+  const s: CaseState = { ...state, route: "adgm_tsl", inputs: { ...state.inputs, "consent:hub71_letter": "yes", [`entry:${sig.id}`]: START } };
   return { ...s, identities: Object.fromEntries(sandboxIdentities(s).map((i) => [i.subjectId, i])) };
 }
 
@@ -64,26 +67,26 @@ function byteforge(): CaseState {
     })),
     dependants: [],
   });
-  return { ...state, route: "adgm_standard" };
+  return { ...state, route: "adgm_standard", inputs: { ...state.inputs, [`entry:${signatoryOf(state.profile)!.id}`]: START } };
 }
 
 const j = (key: string, verdict: Judgment["verdict"]): Judgment => ({ key, label: key, p: 0.5, verdict });
 
-test("Routely price: one founder + spouse + child on the startup licence is AED 40,075", () => {
+test("Routely price: one founder + spouse + child on the startup licence is AED 40,575", () => {
   const q = quote(routely(false))!;
-  assert.equal(q.totalAed, 40075);
-  assert.equal(q.lines.reduce((s, l) => s + l.amountAed, 0), 40075);
+  assert.equal(q.totalAed, 40575);
+  assert.equal(q.lines.reduce((s, l) => s + l.amountAed, 0), 40575);
 });
 
-test("Routely price with both founders relocating is AED 43,912", () => {
-  assert.equal(quote(routely(true))!.totalAed, 43912);
+test("Routely price with both founders relocating is AED 44,362", () => {
+  assert.equal(quote(routely(true))!.totalAed, 44362);
 });
 
 test("Byteforge on the standard licence needs two desks for four people", () => {
   const q = quote(byteforge())!;
   const desk = q.lines.find((l) => l.group === "Provider")!;
   assert.equal(desk.qty, 2);
-  assert.equal(q.totalAed, 4900 + 21301 + 5325 + 4 * 3237 + 4 * 600 + 2 * 13800);
+  assert.equal(q.totalAed, 4900 + 21301 + 5325 + 4 * 3237 + 4 * (250 + 300) + 2 * 14400);
 });
 
 test("Masdar is priced as a partial quote", () => {
@@ -145,7 +148,7 @@ test("nothing is filed before payment", () => {
 test("payment files the Hub71 letter and the desk; incorporation waits for both", () => {
   const { state, filed } = startLanding(routely());
   assert.deepEqual(filed.map((f) => f.step).sort(), ["desk", "hub71_letter"]);
-  assert.equal(state.paid?.amountAed, 40075);
+  assert.equal(state.paid?.amountAed, 40575);
   const status = stepStatuses(state, stepInstances(state, "adgm_tsl"));
   assert.equal(status.incorporation, "locked");
   assert.match(filed.find((f) => f.step === "hub71_letter")!.ref, /^H71-EL-26-\d{5}$/);
@@ -163,9 +166,13 @@ test("the demo clock: two '+2 weeks' get from payment to the medical slot", () =
 
   const w2 = advance(s, { days: 14 });
   s = w2.state;
-  const kinds = w2.events.map((e) => `${e.kind}:${e.step}`);
-  assert.ok(kinds.includes("issued:incorporation"));
-  assert.ok(kinds.includes("deadline:tax_registration"));
+  assert.ok(w2.events.map((e) => `${e.kind}:${e.step}`).includes("issued:incorporation"));
+  assert.ok(w2.events.some((e) => e.kind === "deadline" && e.step === "tax_registration"));
+  // ADGM's own timelines (5 working days for the card, 1 for e-Channels) put the entry permit just past day 28
+  const w3 = advance(s, { untilNextEvent: true });
+  s = w3.state;
+  const kinds = [...w2.events, ...w3.events].map((e) => `${e.kind}:${e.step}`);
+  assert.ok(kinds.includes("issued:establishment_card"));
   assert.ok(kinds.includes("issued:entry_permit"));
   assert.ok(kinds.includes("needs_input:medical"));
   assert.ok(waitingOn(s).some((w) => w.startsWith("Choose a medical test slot for Meera")));
@@ -192,6 +199,7 @@ test("next event stops on the first day something is issued", () => {
 test("the bank account waits for the bank file and the founder's Emirates ID", () => {
   let s = startLanding(routely()).state;
   s = advance(s, { days: 28 }).state;
+  s = advance(s, { untilNextEvent: true }).state; // the entry permit lands just past day 28
   s = provideInput(s, "medical:Meera", "slot").state;
   s = advance(s, { days: 14 }).state; // Emirates ID done, but no bank file yet
   const status = () => stepStatuses(s, stepInstances(s, "adgm_tsl"));
@@ -225,7 +233,7 @@ test("plan windows before payment start today and chain best and typical separat
   const step = (id: string) => plan.groups.flatMap((g) => g.steps).find((x) => x.step === id)!;
   assert.deepEqual(step("hub71_letter").best, [START, addDays(START, 14)]);
   assert.deepEqual(step("incorporation").best, [addDays(START, 14), addDays(START, 19)]);
-  assert.deepEqual(step("incorporation").typical, [addDays(START, 28), addDays(START, 42)]);
+  assert.deepEqual(step("incorporation").typical, [addDays(START, 29), addDays(START, 43)]);
   assert.equal(step("hub71_letter").status, "ready");
   assert.equal(step("incorporation").status, "locked");
 });
@@ -235,7 +243,7 @@ test("normalizeState rejects garbage and keeps a valid case", () => {
   assert.equal(normalizeState({ v: 2 }, START).profile.company, null);
   const s = routely();
   const back = normalizeState(JSON.parse(JSON.stringify(s)), START);
-  assert.equal(quote(back)!.totalAed, 40075);
+  assert.equal(quote(back)!.totalAed, 40575);
 });
 
 test("a family member saved as a person is moved out of the visa holders", () => {
@@ -283,7 +291,7 @@ test("compare card: Abu Dhabi vs Bangalore for Routely, Cairo for Byteforge", ()
   assert.equal(r.homeLabel, "Bangalore");
   assert.deepEqual([...new Set(r.rows.map((x) => x.topic))], ["taxes", "opportunities", "residency", "work", "costs"]);
   assert.ok(r.verdict.includes("Gulf customers") && r.verdict.includes("Bangalore"));
-  assert.deepEqual(r.firstYear[0].abuDhabiAed, [40075, 54765]); // startup licence vs standard licence, same people
+  assert.deepEqual(r.firstYear[0].abuDhabiAed, [40575, 55265]); // startup licence vs standard licence, same people
   assert.equal(r.firstYear.length, 3); // landing, family home, school for Anya
   assert.ok(r.rows.find((x) => x.label === "Market access")?.matters);
 
@@ -308,9 +316,44 @@ test("the sandbox checkout matches the locked price and uses a test card", () =>
   assert.equal(checkoutCard(routely()), null, "no checkout before payment");
   const paid = startLanding(routely()).state;
   const c = checkoutCard(paid)!;
-  assert.equal(c.amountAed, 40075);
-  assert.equal(c.lines.reduce((t, l) => t + l.amountAed, 0), 40075);
+  assert.equal(c.amountAed, 40575);
+  assert.equal(c.lines.reduce((t, l) => t + l.amountAed, 0), 40575);
   assert.equal(c.payer.email, "meera@routely.io");
   assert.equal(c.method.last4, "4242");
   assert.match(c.receipt, /^A71-RCPT-26-\d{6}$/);
+});
+
+test("incorporation waits for the signatory's first UAE entry, and one visit date unlocks it", () => {
+  const base = routely();
+  const sig = signatoryOf(base.profile)!;
+  assert.equal(sig.name, "Meera Iyer", "a relocating founder is the signatory");
+  const inputs = { ...base.inputs };
+  delete inputs[`entry:${sig.id}`];
+  let s: CaseState = startLanding({ ...base, inputs }).state;
+  const status = () => {
+    const st: Record<string, string> = stepStatuses(s, stepInstances(s, "adgm_tsl"));
+    return { ...st, signatory_entry: st[`signatory_entry:${sig.id}`] } as Record<string, string>;
+  };
+  assert.equal(status().signatory_entry, "needs_input");
+  assert.ok(waitingOn(s).some((w) => w.startsWith("When does Meera Iyer first land")));
+
+  const landing = addDays(START, 7);
+  const r = provideInput(s, `entry:Meera`, `Landing ${landing}`);
+  assert.equal(r.state.inputs[`entry:${sig.id}`], landing);
+  s = r.state;
+  assert.equal(status().signatory_entry, "filed");
+  assert.equal(status().incorporation, "locked");
+  s = advance(s, { days: 14 }).state;
+  assert.equal(status().signatory_entry, "done");
+  assert.notEqual(status().incorporation, "locked");
+  assert.equal(provideInput(s, "entry:Meera", "never").error !== undefined, true);
+});
+
+test("desks: the standard licence carries 2 visas per desk, the startup licence 3", () => {
+  const b = byteforge();
+  assert.equal(quote(b)!.lines.find((l) => l.group === "Provider")!.qty, 2);
+  assert.equal(quote({ ...b, route: "adgm_tsl" }, "adgm_tsl")!.lines.find((l) => l.group === "Provider")!.qty, 2, "4 movers on 3 per desk is still 2");
+  const three = routely(true);
+  assert.equal(quote(three)!.lines.find((l) => l.group === "Provider")!.qty, 1, "2 movers fit one startup desk");
+  assert.equal(quote({ ...three, route: "adgm_standard" }, "adgm_standard")!.lines.find((l) => l.group === "Provider")!.qty, 1);
 });

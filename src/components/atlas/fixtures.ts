@@ -37,11 +37,6 @@ export const routeCard: RouteCardData = {
       "label": "Dedicated desk",
       "state": "missing",
       "note": "Required: AED 13,800 a year each, 3 visas per desk; hot desks don't count. Atlas71 books it [source:adgm-faq]."
-    },
-    {
-      "label": "Ownership review",
-      "state": "review",
-      "note": "ADGM and the bank need the parent's certificate of incorporation and shareholder register."
     }
   ],
   "alternatives": [
@@ -1324,15 +1319,15 @@ export const bankFileCard: BankFileCardData = {
   "sections": [
     {
       "title": "Company and activity",
-      "body": "Routely ADGM Ltd is the Abu Dhabi subsidiary of Routely Inc., a Delaware C-corp. It sells route-planning software to delivery fleets on monthly subscriptions: a web app for dispatchers and a mobile app for drivers. Customers are logistics companies in India and the Gulf."
+      "body": "Routely ADGM Ltd is the Abu Dhabi company of Routely, a seed-stage startup based in Bangalore. It sells route-planning software to delivery fleets on monthly subscriptions: a web app for dispatchers and a mobile app for drivers. Customers are logistics companies in India and the Gulf."
     },
     {
       "title": "Source of funds",
-      "body": "Routely Inc. raised USD 600,000 at seed. [Founder confirmation required] Who invested, through which instrument, and how the money reaches the Abu Dhabi company."
+      "body": "Routely raised USD 600,000 at seed. [Founder confirmation required] Who invested, through which instrument, and how the money reaches the Abu Dhabi company."
     },
     {
       "title": "Ownership",
-      "body": "Routely ADGM Ltd is wholly owned by Routely Inc. [Founder confirmation required] The shareholders of Routely Inc. and their percentages."
+      "body": "[Founder confirmation required] Who owns Routely ADGM Ltd, traced up to the people, with their percentages."
     },
     {
       "title": "Expected transactions",
@@ -1394,15 +1389,15 @@ export const bankFileReady: BankFileCardData = {
   "sections": [
     {
       "title": "Company and activity",
-      "body": "Routely ADGM Ltd is the Abu Dhabi subsidiary of Routely Inc., a Delaware C-corp. It sells route-planning software to delivery fleets on monthly subscriptions: a web app for dispatchers and a mobile app for drivers. Customers are logistics companies in India and the Gulf."
+      "body": "Routely ADGM Ltd is the Abu Dhabi subsidiary of Routely, a seed-stage startup based in Bangalore. It sells route-planning software to delivery fleets on monthly subscriptions: a web app for dispatchers and a mobile app for drivers. Customers are logistics companies in India and the Gulf."
     },
     {
       "title": "Source of funds",
-      "body": "Routely Inc. raised USD 600,000 from 8 angel investors through SAFEs. The funds sit with Routely Inc., which capitalises the Abu Dhabi company."
+      "body": "Routely raised USD 600,000 from 8 angel investors through convertible notes. The funds sit with Routely in Bangalore, which capitalises the Abu Dhabi company."
     },
     {
       "title": "Ownership",
-      "body": "Routely ADGM Ltd is 100% owned by Routely Inc. Routely Inc. is owned by Meera Iyer (55%) and Arjun Rao (45%)."
+      "body": "Routely ADGM Ltd will be 100% owned by Routely, the Bangalore company. Routely is owned by Meera Iyer (55%) and Arjun Rao (45%)."
     },
     {
       "title": "Expected transactions",
@@ -1471,7 +1466,7 @@ export const stateFacts: CaseState = {
     "stage": "Seed",
     "fundingUsd": 600000,
     "fundingSource": null,
-    "parentEntity": "Routely Inc., Delaware C-corp",
+    "parentEntity": null,
     "ownership": null,
     "hub71Letter": "none",
     "sellsOnshoreUAE": null,
@@ -1532,7 +1527,7 @@ export const stateUnpaid: CaseState = {
     "stage": "Seed",
     "fundingUsd": 600000,
     "fundingSource": null,
-    "parentEntity": "Routely Inc., Delaware C-corp",
+    "parentEntity": null,
     "ownership": null,
     "hub71Letter": "none",
     "sellsOnshoreUAE": null,
@@ -1644,7 +1639,7 @@ export const statePaid: CaseState = {
     "stage": "Seed",
     "fundingUsd": 600000,
     "fundingSource": null,
-    "parentEntity": "Routely Inc., Delaware C-corp",
+    "parentEntity": null,
     "ownership": null,
     "hub71Letter": "none",
     "sellsOnshoreUAE": null,
@@ -1985,7 +1980,7 @@ export const conversation: UiMessage[] = [
     "parts": [
       {
         "type": "text",
-        "text": "Hi, I'm Meera Iyer, CEO of Routely (routely.io). We sell route-planning software to delivery fleets: a web app for dispatchers and a mobile app for drivers, on monthly subscriptions, to logistics companies in India and the Gulf. We're a seed-stage Delaware C-corp, Routely Inc., with the team in Bangalore, and we've raised $600k. I'm moving to Abu Dhabi with my husband Rohan and our daughter Anya, who's 6. My co-founder Arjun Rao is our CTO. We expect around $40k a month in customer payments, from the UAE, Saudi Arabia and India."
+        "text": "Hi, I'm Meera Iyer, CEO of Routely (routely.io). We sell route-planning software to delivery fleets: a web app for dispatchers and a mobile app for drivers, on monthly subscriptions, to logistics companies in India and the Gulf. We're a seed-stage startup based in Bangalore, and we've raised $600k. I'm moving to Abu Dhabi with my husband Rohan and our daughter Anya, who's 6. My co-founder Arjun Rao is our CTO. We expect around $40k a month in customer payments, from the UAE, Saudi Arabia and India."
       }
     ]
   },
@@ -2000,7 +1995,7 @@ export const conversation: UiMessage[] = [
       },
       {
         "type": "text",
-        "text": "Thanks, Meera. I've saved Routely, the Delaware parent and your family's move. One question before I check your route: **is Arjun relocating to Abu Dhabi too?**"
+        "text": "Thanks, Meera. I've saved Routely and your family's move. One question before I check your route: **is Arjun relocating to Abu Dhabi too?**"
       },
       {
         "type": "choices",
@@ -2085,11 +2080,6 @@ export const conversation: UiMessage[] = [
                 "label": "Dedicated desk",
                 "state": "missing",
                 "note": "Required: AED 13,800 a year each, 3 visas per desk; hot desks don't count. Atlas71 books it [source:adgm-faq]."
-              },
-              {
-                "label": "Ownership review",
-                "state": "review",
-                "note": "ADGM and the bank need the parent's certificate of incorporation and shareholder register."
               }
             ],
             "alternatives": [
@@ -2175,7 +2165,7 @@ export const conversation: UiMessage[] = [
       },
       {
         "type": "text",
-        "text": "The **ADGM Tech Startup Licence** fits: you sell your own product, and it's the lowest ADGM licence fee. I'll file the Hub71 letter and book the desk once you confirm.\n\n- Ownership needs a short review because of the Delaware parent.\n- These are AI checks, not official decisions."
+        "text": "The **ADGM Tech Startup Licence** fits: you sell your own product, and it's the lowest ADGM licence fee. I'll file the Hub71 letter and book the desk once you confirm.\n\nThese are AI checks, not official decisions."
       },
       {
         "type": "choices",
@@ -2461,4 +2451,17 @@ export const checkoutCard: CheckoutCardData = {
   receipt: "A71-RCPT-26-418207",
   paidOn: "2026-10-02",
   status: "succeeded",
+  phoneMasked: "+91 ••••• ••164",
+  code: "424242",
+  authorises: [
+    "Apply to Hub71 for the eligibility letter",
+    "Reserve 1 dedicated desk in the ADGM zone",
+    "Incorporate Routely with the ADGM Registration Authority",
+    "Apply for the establishment card and e-Channels",
+    "Register the company for corporate tax with the FTA",
+    "Entry permits, medical tests and Emirates IDs for Meera Iyer",
+    "Dependant visas for Rohan and Anya, once their certificates are legalised",
+    "Business account application with Wio Business",
+    "Payments account with Stripe",
+  ],
 };

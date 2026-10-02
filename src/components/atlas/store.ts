@@ -47,7 +47,12 @@ export interface AtlasStore {
 /** Abort a stream that has been silent this long. */
 const IDLE_TIMEOUT_MS = 75_000;
 const UNDO_MS = 8_000;
-const FILES_ONLY_TEXT = "Here's the document.";
+/**
+ * Vercel refuses function request bodies over 4.5 MB. Uploaded files travel as URLs and the composer
+ * keeps inline ones within MAX_INLINE_TOTAL_BYTES, so this only catches a surprise before the server does.
+ */
+const MAX_REQUEST_BYTES = 4_400_000;
+const TOO_LARGE = "These files are too large to send together. Attach fewer and send again.";
 
 const SERVER_SNAPSHOT: Snapshot = {
   ready: false,
@@ -170,10 +175,15 @@ export function createAtlasStore(): AtlasStore {
         ...(action ? { action } : {}),
         ...(files?.length ? { attachments: files } : {}),
       };
+      const json = JSON.stringify(body);
+      if (files?.length && new Blob([json]).size > MAX_REQUEST_BYTES) {
+        fail(TOO_LARGE, true);
+        return;
+      }
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
-        body: JSON.stringify(body),
+        body: json,
         signal: ctrl.signal,
         cache: "no-store",
       });
@@ -241,7 +251,7 @@ export function createAtlasStore(): AtlasStore {
     send(text, opts = {}) {
       if (!snap.ready || snap.busy) return false;
       const files = opts.files?.length ? opts.files : undefined;
-      const clean = text.trim() || (files ? FILES_ONLY_TEXT : "");
+      const clean = text.trim() || (files ? (files.length > 1 ? "Here are my documents." : "Here's my document.") : "");
       if (!clean) return false;
       const user: UiMessage = { id: uid(), role: "user", parts: [{ type: "text", text: clean }] };
       if (opts.action) user.action = opts.action;

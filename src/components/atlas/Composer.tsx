@@ -2,10 +2,13 @@
 
 // The composer: an auto-growing textarea with voice dictation, file attachments (pick, paste, drop),
 // and ↑/↓ recall of earlier messages. Mechanics ported from agenturo's ChatInput; look is Atlas71's.
+// Each attached file gets ready on its own (compress, upload or read inline) with its progress in a
+// pill; removing a pill cancels its upload, and Send waits until every file is ready.
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type Ref } from "react";
-import { ATTACHMENT_ACCEPT, MAX_ATTACHMENTS, MAX_TOTAL_ATTACHMENT_BYTES, type Attachment } from "@/lib/atlas/attachments";
-import { formatBytes, prepareFile, type PendingFile } from "./files";
-import { IconArrowUp, IconFile, IconMic, IconPaperclip, IconX, Spinner } from "./icons";
+import { ATTACHMENT_ACCEPT, MAX_ATTACHMENTS, type Attachment } from "@/lib/atlas/attachments";
+import { FileBadge } from "./file-badge";
+import { FileError, checkFile, formatBytes, makeInlineRoom, newFileId, prepareFile, type PendingFile } from "./files";
+import { IconArrowUp, IconCheck, IconMic, IconPaperclip, IconX, Spinner } from "./icons";
 import { canRecordVoice, useVoiceInput } from "./useVoiceInput";
 import { cx } from "./ui";
 
@@ -20,6 +23,54 @@ const SERVER_FALSE = () => false;
 const hasSoftKeyboard = () => typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 const MAX_HEIGHT = 240;
 const BARS = [0, 120, 240, 360, 240, 120, 0];
+
+function FilePill({ file, onRemove }: { file: PendingFile; onRemove: () => void }) {
+  const uploading = file.stage === "uploading";
+  const ready = file.stage === "ready";
+  const percent = Math.round(file.progress);
+  const status = uploading
+    ? `Uploading ${percent}% · ${formatBytes(file.bytes)}`
+    : ready
+      ? `${file.note ?? "Ready"}${file.note === "Uploaded" || file.note === "Ready" ? ` · ${formatBytes(file.bytes)}` : ""}`
+      : (file.activity ?? "Preparing…");
+  return (
+    <li className="atlas-fade relative w-[272px] shrink-0 sm:w-[320px]" title={file.hint}>
+      <div className="relative flex h-14 items-center gap-2.5 overflow-hidden rounded-xl border border-line bg-sunken py-2 pl-2 pr-10">
+        {file.preview ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a local data URL thumbnail
+          <img src={file.preview} alt="" width={40} height={40} className="size-10 shrink-0 rounded-lg border border-line object-cover" />
+        ) : (
+          <FileBadge mime={file.mime} />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-medium leading-5 text-ink">{file.name}</p>
+          <p className="flex items-center gap-1 text-[12px] leading-4 tabular-nums text-muted">
+            {ready ? (
+              <IconCheck size={12} strokeWidth={3} className="shrink-0 text-good" />
+            ) : uploading ? null : (
+              <Spinner size={12} className="shrink-0 text-accent" />
+            )}
+            <span className="truncate">{status}</span>
+          </p>
+        </div>
+        {uploading ? (
+          <span className="absolute inset-x-0 bottom-0 h-[3px] bg-accent-soft" aria-hidden="true">
+            <span className="block h-full bg-accent transition-[width] duration-200 ease-out" style={{ width: `${Math.max(2, percent)}%` }} />
+          </span>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={uploading ? `Cancel the upload of ${file.name}` : `Remove ${file.name}`}
+        title={uploading ? "Cancel upload" : "Remove"}
+        className="absolute right-1.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors after:absolute after:-inset-2 after:content-[''] hover:bg-line hover:text-ink"
+      >
+        <IconX size={14} strokeWidth={2.2} />
+      </button>
+    </li>
+  );
+}
 
 export function Composer({
   ref,
@@ -37,13 +88,16 @@ export function Composer({
 }) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<PendingFile[]>([]);
-  const [processing, setProcessing] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
   const textRef = useRef("");
   const filesRef = useRef<PendingFile[]>([]);
+  /** One per file still getting ready: aborting it cancels the upload or the reading. */
+  const jobsRef = useRef(new Map<string, AbortController>());
+  /** Inline work (fitting photos and scans into the budget) runs one file at a time. */
+  const inlineQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const baseTextRef = useRef("");
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const walkRef = useRef({ index: -1, draft: "" });
@@ -67,8 +121,42 @@ export function Composer({
     if (message) errorTimer.current = setTimeout(() => setError(null), 6_000);
   }, []);
 
+  const patchFile = useCallback(
+    (id: string, patch: Partial<PendingFile>) => {
+      if (!filesRef.current.some((f) => f.id === id)) return; // removed meanwhile
+      setPending(filesRef.current.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    },
+    [setPending],
+  );
+
+  const removeFile = useCallback(
+    (id: string) => {
+      jobsRef.current.get(id)?.abort();
+      jobsRef.current.delete(id);
+      setPending(filesRef.current.filter((f) => f.id !== id));
+    },
+    [setPending],
+  );
+
+  /** Queues inline work behind the files before it, with the room this file may take in the request. */
+  const inlineFor = useCallback(
+    (id: string) =>
+      <T,>(work: (room: (need: number) => number) => Promise<T>): Promise<T> => {
+        const run = inlineQueueRef.current.then(() =>
+          work((need) => {
+            const { free, files: next } = makeInlineRoom(filesRef.current, id, need);
+            if (next !== filesRef.current) setPending(next);
+            return free;
+          }),
+        );
+        inlineQueueRef.current = run.catch(() => undefined);
+        return run;
+      },
+    [setPending],
+  );
+
   const addFiles = useCallback(
-    async (list: File[]) => {
+    (list: File[]) => {
       if (!list.length) return;
       showError(null);
       for (const file of list) {
@@ -76,38 +164,61 @@ export function Composer({
           showError(`You can attach up to ${MAX_ATTACHMENTS} files per message.`);
           break;
         }
-        setProcessing((c) => c + 1);
-        let result: Awaited<ReturnType<typeof prepareFile>>;
-        try {
-          result = await prepareFile(file);
-        } catch {
-          result = { ok: false, error: `Couldn't read ${file.name || "that file"}. Try again.` };
-        } finally {
-          setProcessing((c) => c - 1);
-        }
-        if (!result.ok) {
-          showError(result.error);
+        const checked = checkFile(file);
+        if (!checked.ok) {
+          showError(checked.error);
           continue;
         }
-        const total = filesRef.current.reduce((sum, f) => sum + f.size, 0) + result.file.size;
-        if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
-          showError(`Together these files are over ${formatBytes(MAX_TOTAL_ATTACHMENT_BYTES)}. Remove one and try again.`);
-          continue;
-        }
-        if (filesRef.current.length >= MAX_ATTACHMENTS) {
-          showError(`You can attach up to ${MAX_ATTACHMENTS} files per message.`);
-          break;
-        }
-        setPending([...filesRef.current, result.file]);
+        const id = newFileId();
+        const job = new AbortController();
+        jobsRef.current.set(id, job);
+        setPending([
+          ...filesRef.current,
+          {
+            id,
+            kind: checked.kind,
+            name: checked.name,
+            mime: checked.kind === "pdf" ? "application/pdf" : file.type || "image/*",
+            size: file.size,
+            stage: "preparing",
+            activity: checked.kind === "pdf" ? "Preparing…" : "Compressing…",
+            progress: 0,
+            bytes: file.size,
+            preview: null,
+          },
+        ]);
+        prepareFile(file, checked.kind, checked.name, {
+          signal: job.signal,
+          update: (patch) => patchFile(id, patch),
+          inline: inlineFor(id),
+        })
+          .catch((err: unknown) => {
+            if (job.signal.aborted) return; // the founder removed it
+            if (!(err instanceof FileError)) console.warn("[atlas71] couldn't prepare a file", err);
+            removeFile(id);
+            showError(err instanceof FileError ? err.message : `Couldn't read ${checked.name}. Try again.`);
+          })
+          .finally(() => {
+            if (jobsRef.current.get(id) === job) jobsRef.current.delete(id);
+          });
       }
     },
-    [setPending, showError],
+    [inlineFor, patchFile, removeFile, setPending, showError],
   );
+
+  // Leaving the page (or a reset that remounts) cancels whatever is still uploading.
+  useEffect(() => {
+    const jobs = jobsRef.current;
+    return () => {
+      for (const job of jobs.values()) job.abort();
+      jobs.clear();
+    };
+  }, []);
 
   useImperativeHandle(
     ref,
     () => ({
-      addFiles: (list) => void addFiles(list),
+      addFiles,
       focus: () => taRef.current?.focus(),
     }),
     [addFiles],
@@ -157,6 +268,7 @@ export function Composer({
   }, [autosize]);
 
   const hasContent = text.trim() !== "" || files.length > 0;
+  const filesPending = files.some((f) => f.stage !== "ready");
   const mode: "send" | "mic" | "listening" | "transcribing" =
     voice.state === "transcribing"
       ? "transcribing"
@@ -170,10 +282,11 @@ export function Composer({
     if (voice.state !== "idle") voice.cancel();
     const t = textRef.current.trim();
     const ready = filesRef.current;
-    if (busy || processing > 0 || (!t && !ready.length)) return;
+    const attachments = ready.flatMap((f) => (f.stage === "ready" && f.attachment ? [f.attachment] : []));
+    if (busy || attachments.length !== ready.length || (!t && !ready.length)) return;
     const ok = onSend(
       t,
-      ready.map(({ name, mime, size, dataUrl }) => ({ name, mime, size, dataUrl })),
+      attachments,
       ready.map((f) => f.preview),
     );
     if (!ok) return;
@@ -249,10 +362,19 @@ export function Composer({
     send();
   };
 
-  const actionDisabled = mode === "transcribing" ? true : mode === "send" ? busy || processing > 0 || !hasContent : false;
+  const actionDisabled = mode === "transcribing" ? true : mode === "send" ? busy || filesPending || !hasContent : false;
   const actionLabel =
-    mode === "mic" ? "Dictate a message" : mode === "listening" ? "Stop recording" : mode === "transcribing" ? "Transcribing" : "Send message";
+    mode === "mic"
+      ? "Dictate a message"
+      : mode === "listening"
+        ? "Stop recording"
+        : mode === "transcribing"
+          ? "Transcribing"
+          : filesPending
+            ? "Send (waiting for your files)"
+            : "Send message";
   const readOnly = voice.state !== "idle";
+  const readyCount = files.filter((f) => f.stage === "ready").length;
 
   return (
     <div className="mx-auto w-full max-w-[760px]">
@@ -276,38 +398,12 @@ export function Composer({
           "border-line-strong focus-within:border-accent focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent)_14%,transparent),var(--elev-lift)]",
         )}
       >
-        {files.length || processing ? (
-          <ul className="flex flex-wrap gap-2 px-3 pt-3" aria-label="Attachments">
+        {files.length ? (
+          // A phone swipes through the pills; wider screens wrap them, two to a row.
+          <ul className="atlas-no-scrollbar flex gap-2 overflow-x-auto px-3 pt-3 sm:flex-wrap sm:overflow-visible" aria-label="Attachments">
             {files.map((f) => (
-              <li key={f.id} className="atlas-fade relative">
-                {f.preview ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- a local data URL thumbnail
-                  <img src={f.preview} alt={f.name} width={56} height={56} className="size-14 rounded-xl border border-line object-cover" />
-                ) : (
-                  <div className="flex h-14 max-w-[220px] items-center gap-2 rounded-xl border border-line bg-sunken pl-3 pr-9">
-                    <IconFile size={18} className="shrink-0 text-muted" />
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] font-medium text-ink">{f.name}</p>
-                      <p className="text-[12px] tabular-nums text-muted">{formatBytes(f.size)}</p>
-                    </div>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setPending(filesRef.current.filter((x) => x.id !== f.id))}
-                  aria-label={`Remove ${f.name}`}
-                  className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full border border-line bg-surface text-muted shadow-sm transition-colors after:absolute after:-inset-2.5 after:content-[''] hover:text-ink"
-                >
-                  <IconX size={12} strokeWidth={2.4} />
-                </button>
-              </li>
+              <FilePill key={f.id} file={f} onRemove={() => removeFile(f.id)} />
             ))}
-            {processing ? (
-              <li className="flex h-14 items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 text-[13px] text-muted">
-                <Spinner size={14} className="text-accent" />
-                Preparing…
-              </li>
-            ) : null}
           </ul>
         ) : null}
 
@@ -404,6 +500,9 @@ export function Composer({
       </div>
       <p className="sr-only" aria-live="polite">
         {voice.state === "listening" ? "Listening" : voice.state === "transcribing" ? "Transcribing" : ""}
+      </p>
+      <p className="sr-only" aria-live="polite">
+        {files.length ? (readyCount === files.length ? `${files.length === 1 ? "Your file is" : "All files are"} ready to send.` : `${readyCount} of ${files.length} files ready.`) : ""}
       </p>
     </div>
   );

@@ -25,7 +25,7 @@ export function uid(): string {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const CARD_KINDS = new Set(["route", "plan", "price", "filings", "updates", "bank_file", "export", "compare", "checkout"]);
+const CARD_KINDS = new Set(["route", "plan", "price", "filings", "updates", "bank_file", "export", "compare", "checkout", "identity"]);
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
