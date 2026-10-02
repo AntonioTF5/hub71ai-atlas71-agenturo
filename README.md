@@ -11,3 +11,4 @@ npm run dev
 - Streaming chat endpoint: `POST /api/chat` `{ messages, model?, system? }`
 - Deploy: `vercel --prod` (or push to `main` once the Vercel project is Git-connected)
 - Typed judgments: `src/lib/typesafe.ts` (TypeSafe System One: choice / noul / score). Use for routing, scoring, verification; OpenRouter for generation.
+- Key check: `GET /api/health` verifies both keys live (never prints them).
