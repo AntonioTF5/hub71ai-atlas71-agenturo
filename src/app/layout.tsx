@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Atlas71 · Land your startup in Abu Dhabi",
+  title: "Atlas71 · Should your startup move to Abu Dhabi?",
   description:
-    "Atlas71 is an AI agent that lands founders in Abu Dhabi: it picks your licence route, shows every step with dates, quotes one all-in price, and files everything for you.",
+    "Atlas71 is an AI agent for founders: it answers whether Abu Dhabi fits your startup with sourced numbers, then picks your licence, prices the whole move and files the paperwork. Ask anything on the way.",
   applicationName: "Atlas71",
   appleWebApp: { capable: true, title: "Atlas71", statusBarStyle: "default" },
   // Filing references and amounts must not turn into tappable phone numbers on iOS.

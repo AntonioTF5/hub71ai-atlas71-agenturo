@@ -303,7 +303,11 @@ function AtlasShell() {
                 busy={busy || !snap.ready}
                 history={history}
                 placeholder={
-                  messages.length ? "Reply to Atlas71…" : wide ? "Tell Atlas71 what you build and who's moving…" : "Tell Atlas71 what you build…"
+                  messages.length
+                    ? "Reply to Atlas71…"
+                    : wide
+                      ? "Ask anything, or tell Atlas71 what you build and who's moving…"
+                      : "Ask anything about moving…"
                 }
                 onSend={onComposerSend}
               />
