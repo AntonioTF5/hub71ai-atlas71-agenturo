@@ -137,12 +137,15 @@ export function Notice({
 // ---------- sources ----------
 
 /** A source citation. Opens the page in a new tab; Atlas71's own pricing has no URL, so it's a plain chip. */
-export function SourceChip({ id, fallback }: { id: string; fallback?: SourceRef }) {
+export function SourceChip({ id, fallback, compact = false }: { id: string; fallback?: SourceRef; compact?: boolean }) {
   const known = SOURCES[id];
   const s = known ?? (fallback ? { ...fallback, claim: fallback.title } : null);
   if (!s || !s.title) return null;
-  const base =
-    "mx-[0.15em] inline-flex max-w-full items-center gap-1 rounded-full border bg-surface px-2 py-px align-[0.06em] text-[12px] font-medium leading-[20px] text-muted";
+  // Inline in text it hugs the words around it; compact (in a row of chips) it stays short.
+  const base = cx(
+    "inline-flex items-center gap-1 rounded-full border bg-surface px-2 py-px align-[0.06em] text-[12px] font-medium leading-[20px] text-muted",
+    compact ? "max-w-[8.5rem]" : "mx-[0.15em] max-w-full",
+  );
   const url = typeof s.url === "string" && /^https?:\/\//.test(s.url) ? s.url : "";
   if (!url) {
     return (

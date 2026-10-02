@@ -33,8 +33,15 @@ export function renderInline(text: string, key = "i"): ReactNode[] {
     if (at > last) out.push(text.slice(last, at));
     const g = m.groups ?? {};
     const k = `${key}.${n++}`;
-    // A citation keeps the punctuation that follows it, so a chip never wraps away from its full stop.
-    const trail = g.src !== undefined || g.bare !== undefined ? (/^[.,;:!?)]/.exec(text.slice(at + m[0].length))?.[0] ?? "") : "";
+    // Punctuation after a citation: a sentence mark moves in front of the chip ("…is for. [chip]"), the way a
+    // footnote sits after the full stop; a closing bracket stays glued to the chip so it never wraps away.
+    let trail = g.src !== undefined || g.bare !== undefined ? (/^[.,;:!?)]/.exec(text.slice(at + m[0].length))?.[0] ?? "") : "";
+    const consumed = trail.length;
+    const prev = out[out.length - 1];
+    if (trail && trail !== ")" && typeof prev === "string" && (g.src !== undefined ? g.src.split(/[\s,]+/).some((id) => SOURCES[id]) : !!SOURCES[g.bare ?? ""])) {
+      out[out.length - 1] = `${prev.replace(/\s+$/, "")}${trail} `;
+      trail = "";
+    }
     if (g.bold !== undefined) {
       out.push(
         <strong key={k} className="font-semibold text-ink">
@@ -93,7 +100,7 @@ export function renderInline(text: string, key = "i"): ReactNode[] {
         </span>,
       );
     }
-    last = at + m[0].length + trail.length;
+    last = at + m[0].length + consumed;
   }
   if (last < text.length) out.push(text.slice(last));
   return out;

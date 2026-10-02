@@ -142,6 +142,7 @@ export default function CardsGallery() {
     ["Passport details · all valid", F.stateUnpaid, { kind: "identity", data: FX.identityCardOk }],
     ["Investor documents · uploaded (sandbox)", F.stateUnpaid, { kind: "documents", data: FX.documentsCardRoutely }],
     ["Passport details · short validity, missing people", F.stateUnpaid, { kind: "identity", data: FX.identityCardWarning }],
+    ["Compare · Abu Dhabi vs Bangalore (live engine)", F.stateFacts, { kind: "compare", data: FX.compareCardLive }],
     ["Compare · Abu Dhabi vs Bangalore", F.stateFacts, { kind: "compare", data: F.compareCard }],
     ["Route · Routely (live TypeSafe)", F.stateUnpaid, { kind: "route", data: F.routeCard }],
     ["Route · Byteforge (service provider flagged)", F.stateByteforge, { kind: "route", data: F.routeCardByteforge }],

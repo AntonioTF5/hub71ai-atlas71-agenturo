@@ -113,7 +113,7 @@ export function PriceCard({ data }: { data: PriceCardData }) {
                         {l.label}
                         <LineSource id={l.sourceId} />
                       </p>
-                      {typeof l.qty === "number" && typeof l.unitAed === "number" ? (
+                      {typeof l.qty === "number" && l.qty > 1 && typeof l.unitAed === "number" ? (
                         <p className="mt-0.5 text-[13px] tabular-nums text-muted">
                           {l.qty} × {aed(l.unitAed)}
                         </p>
@@ -152,7 +152,7 @@ export function PriceCard({ data }: { data: PriceCardData }) {
             <ul className="mt-2 space-y-1.5">
               {data.excluded.map((item, i) => (
                 <li key={i} className="flex gap-2 text-[14px] leading-snug text-muted">
-                  <span aria-hidden="true" className="mt-[9px] h-[1.5px] w-2.5 shrink-0 rounded-full bg-muted" />
+                  <span aria-hidden="true" className="w-[15px] shrink-0 text-center">–</span>
                   <span className="min-w-0">{item}</span>
                 </li>
               ))}
@@ -180,14 +180,8 @@ export function PriceCard({ data }: { data: PriceCardData }) {
                 )}
                 <span className="min-w-0 text-pretty">
                   <span className="sr-only">{c.done ? "Done: " : "Still needed: "}</span>
-                  {c.done ? (
-                    <>
-                      <span className="font-medium text-ink">{c.label}</span>
-                      <span className="text-muted"> · {c.detail}</span>
-                    </>
-                  ) : (
-                    <span className="text-ink">{c.detail}</span>
-                  )}
+                  <span className="font-medium text-ink">{c.label}</span>
+                  <span className="text-muted"> · {c.done ? c.detail : (c.todo ?? c.detail)}</span>
                 </span>
               </li>
             ))}
