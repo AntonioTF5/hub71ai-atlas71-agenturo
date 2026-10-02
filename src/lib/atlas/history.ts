@@ -1,6 +1,7 @@
 // Turns the chat into the compact history the agent sees: text only, plus one-line notes for cards
 // and choices. Old tool calls are never replayed; the case summary in the system prompt carries state.
-import type { AgentRequest, Card, ChatMessage } from "./types";
+import type { AgentRequest, Card } from "./types";
+import { attachmentNote, type ChatMessageWithFiles } from "./attachments.ts";
 import { aed } from "./format.ts";
 
 export function cardNote(card: Card): string {
@@ -30,8 +31,9 @@ export function cardNote(card: Card): string {
   }
 }
 
-function messageText(m: ChatMessage): string {
+function messageText(m: ChatMessageWithFiles): string {
   const out: string[] = [];
+  if (m.attachments?.length) out.push(attachmentNote(m.attachments));
   for (const part of m.parts) {
     if (part.type === "text" && part.text.trim()) out.push(part.text.trim());
     else if (part.type === "card") out.push(cardNote(part.card));
@@ -41,7 +43,7 @@ function messageText(m: ChatMessage): string {
 }
 
 /** History for POST /api/agent: alternating roles, starting with the user, last `max` turns. */
-export function toLlmHistory(messages: ChatMessage[], max = 40): AgentRequest["messages"] {
+export function toLlmHistory(messages: ChatMessageWithFiles[], max = 40): AgentRequest["messages"] {
   const out: AgentRequest["messages"] = [];
   for (const m of messages) {
     const content = messageText(m);

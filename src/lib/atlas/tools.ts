@@ -36,6 +36,9 @@ export interface ToolContext {
   state: CaseState;
   action?: AgentAction;
   emit: (e: StreamEvent) => void;
+  /** Text shown since the last card, activity or choices in this response. */
+  freshText?: () => string;
+  say?: (text: string) => void;
 }
 
 type Args = Record<string, unknown>;
@@ -140,9 +143,12 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
   ),
   fn(
     "offer_choices",
-    "Show 2–4 short tappable answers to the question you just asked. Ends your turn.",
-    { options: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 4 } },
-    ["options"],
+    "Reply to the founder and show 2–4 tappable answers. `say` is your message, shown above the buttons: 1–3 short sentences ending with the question. Ends your turn.",
+    {
+      say: { type: "string", description: "Your message to the founder, ending with the question the buttons answer." },
+      options: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 4 },
+    },
+    ["say", "options"],
   ),
   fn("export_pack", "Show the export card, where the founder downloads the landing pack and the case file."),
 ];
@@ -472,6 +478,7 @@ const EXECUTORS: Record<string, Executor> = {
     return ok({
       saved: r.key,
       filed: filedSummary(r.state, r.filed),
+      note: r.filed.length ? undefined : "Saved. The step files automatically as soon as it unlocks.",
       waitingOnFounder: waitingItems(r.state).map((w) => w.label),
       bankFile: bankHint(r.state),
     });
@@ -525,6 +532,16 @@ const EXECUTORS: Record<string, Executor> = {
   },
 
   offer_choices(args, ctx) {
+    // Show the message unless the model already wrote it; if it wrote text without the question, add the question.
+    const say = typeof args.say === "string" ? args.say.trim().slice(0, 600) : "";
+    const fresh = ctx.freshText?.() ?? "";
+    if (say && ctx.say) {
+      if (!fresh.trim()) ctx.say(say);
+      else if (!fresh.includes("?") && say.includes("?")) {
+        const question = say.match(/[^.!?]*\?/g)?.pop()?.trim();
+        if (question) ctx.say(`\n\n${question}`);
+      }
+    }
     const raw = Array.isArray(args.options) ? args.options : [];
     const options = [
       ...new Set(
