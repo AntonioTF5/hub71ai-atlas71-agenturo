@@ -29,7 +29,8 @@ import {
   whoFor,
 } from "./engine.ts";
 import { applyProfile, factClaims, withoutClaims } from "./profile.ts";
-import { runBankChecks, runFitChecks, verifyClaims } from "./checks.ts";
+import { runBankChecks, runFitChecks, runPriorityChecks, verifyClaims } from "./checks.ts";
+import { compareCard } from "./compare.ts";
 import { aed, fmtDateLong, fmtSimDay } from "./format.ts";
 
 export interface ToolContext {
@@ -111,6 +112,10 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
         },
       },
     },
+  ),
+  fn(
+    "compare_abu_dhabi",
+    "The decide step. Shows the 'Does Abu Dhabi fit?' card: Abu Dhabi against the founder's home base on taxes, opportunities, residency, working conditions and first-year costs, with live TypeSafe judgments on what matters for this company. Call it once you know what they build, where they're based and who's moving (before check_route), or whenever they ask whether Abu Dhabi is right for them.",
   ),
   fn(
     "check_route",
@@ -279,6 +284,11 @@ async function draftBankFile(state: CaseState): Promise<{ title: string; body: s
 
 function nextHint(state: CaseState): string | undefined {
   const missing = missingFacts(state);
+  const canCompare = !!state.profile.description && !!state.profile.homeBase && state.profile.people.some((x) => x.relocating);
+  const blocking = missing.route.filter((k) => k !== "hub71Letter" && k !== "dependants");
+  if (canCompare && !blocking.length && !state.inputs.compared && !state.paid) {
+    return `Call compare_abu_dhabi now (the decide step)${missing.route.length ? `, then ask about ${describeFact(missing.route[0])}` : ", then offer to find the licence route"}.`;
+  }
   if (missing.route.length) return `Ask about ${describeFact(missing.route[0])}.`;
   if (!state.fit) return "Nothing is missing before the route: call check_route.";
   if (!state.paid && isFitStale(state)) return "Facts the route check used changed: call check_route again.";
@@ -347,6 +357,31 @@ const EXECUTORS: Record<string, Executor> = {
       missingBeforeRoute: missing.route.map(describeFact),
       missingForBankFile: missing.bank.map(describeFact),
       next: bankFile ? "The bank file was re-checked (see bankFileRechecked): tell the founder the result." : nextHint(ctx.state),
+    });
+  },
+
+  async compare_abu_dhabi(_args, ctx) {
+    const p = ctx.state.profile;
+    if (!p.description || !p.people.some((x) => x.relocating)) {
+      return fail("Ask first what the company does, where it's based and who's moving.");
+    }
+    ctx.emit({ t: "activity", d: "Weighing what matters for you with TypeSafe…" });
+    const { judgments, meta } = await runPriorityChecks(ctx.state);
+    ctx.emit({
+      t: "activity",
+      d: meta.live ? `Weighed what matters for ${p.company ?? "you"} with TypeSafe · ${meta.latencyMs} ms` : "TypeSafe didn't answer; comparing without it",
+      done: true,
+    });
+    const card = compareCard(ctx.state, judgments, meta);
+    ctx.state = { ...ctx.state, inputs: { ...ctx.state.inputs, compared: ctx.state.today } };
+    ctx.emit({ t: "state", state: ctx.state });
+    ctx.emit({ t: "card", card: { kind: "compare", data: card } });
+    return ok({
+      verdict: card.verdict,
+      rows: card.rows.map((r) => `${r.label}: Abu Dhabi ${r.abuDhabi} | ${card.homeLabel} ${r.home}${r.matters ? " (matters for them)" : ""}`),
+      firstYearAed: card.firstYear.map((f) => `${f.label}: Abu Dhabi ${aed(f.abuDhabiAed[0])}–${aed(f.abuDhabiAed[1])}${f.homeAed ? ` | ${card.homeLabel} ${aed(f.homeAed[0])}–${aed(f.homeAed[1])}` : ""}`),
+      whatMatters: judgments.map((j) => `${j.label}: p=${j.p}`),
+      note: "The comparison card is on screen. In one or two sentences give the honest verdict (tax and opportunity gains, higher living costs), then go on to incorporation: ask the next missing fact or offer to find the licence route, with offer_choices.",
     });
   },
 

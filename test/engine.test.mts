@@ -20,6 +20,7 @@ import {
 import { applyProfile, factClaims, withoutClaims } from "../src/lib/atlas/profile.ts";
 import { emptyCase } from "../src/lib/atlas/personas.ts";
 import { addDays } from "../src/lib/atlas/format.ts";
+import { compareCard } from "../src/lib/atlas/compare.ts";
 
 const START = "2026-10-02";
 
@@ -122,6 +123,7 @@ test("missing facts: an unconfirmed co-founder is asked about before the route",
   const { state } = applyProfile(emptyCase(START), {
     company: "Routely",
     description: "SaaS",
+    homeBase: "Bangalore, India",
     people: [{ name: "Meera Iyer", relocating: true }, { name: "Arjun Rao" }],
     dependants: [{ relation: "spouse", sponsorName: "Meera Iyer" }],
   });
@@ -258,7 +260,27 @@ test("sensitive facts become TypeSafe claims, and dropped claims are not saved",
   const { state } = applyProfile(emptyCase(START), withoutClaims(args, dropped));
   assert.equal(state.profile.hub71Letter, null);
   assert.equal(state.profile.fundingSource, "$600k from 8 angels via SAFEs");
-  assert.deepEqual(missingFacts(state).route, ["description", "relocating:Arjun Rao", "dependants", "hub71Letter"]);
+  assert.deepEqual(missingFacts(state).route, ["description", "homeBase", "relocating:Arjun Rao", "dependants", "hub71Letter"]);
   // an unchanged, already-confirmed fact isn't re-checked
   assert.deepEqual(factClaims(state, { people: [{ name: "Meera", relocating: true }] }), []);
+});
+
+test("compare card: Abu Dhabi vs Bangalore for Routely, Cairo for Byteforge", () => {
+  const checks: Judgment[] = [
+    { key: "gcc_customers", label: "GCC", p: 0.92, verdict: "pass" },
+    { key: "raising_capital", label: "VC", p: 0.81, verdict: "pass" },
+    { key: "hiring_abroad", label: "Hiring", p: 0.2, verdict: "flag" },
+    { key: "cost_sensitive", label: "Costs", p: 0.7, verdict: "pass" },
+  ];
+  const r = compareCard({ ...routely(), route: null }, checks, { live: true, latencyMs: 120 });
+  assert.equal(r.homeLabel, "Bangalore");
+  assert.deepEqual([...new Set(r.rows.map((x) => x.topic))], ["taxes", "opportunities", "residency", "work", "costs"]);
+  assert.ok(r.verdict.includes("Gulf customers") && r.verdict.includes("Bangalore"));
+  assert.deepEqual(r.firstYear[0].abuDhabiAed, [40075, 54765]); // startup licence vs standard licence, same people
+  assert.equal(r.firstYear.length, 3); // landing, family home, school for Anya
+  assert.ok(r.rows.find((x) => x.label === "Market access")?.matters);
+
+  const b = compareCard({ ...byteforge(), route: null, profile: { ...byteforge().profile, homeBase: "Cairo, Egypt" } }, [], { live: true });
+  assert.equal(b.homeLabel, "Cairo");
+  assert.match(b.firstYear[1].label, /1-bed × 4/);
 });

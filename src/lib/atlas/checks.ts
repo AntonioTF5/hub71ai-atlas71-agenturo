@@ -84,6 +84,33 @@ export const BANK_CHECKS: Record<string, CheckDef> = {
   },
 };
 
+// What matters for this founder when deciding on Abu Dhabi. Raw judgments; compare.ts turns them into
+// "matters for you" marks on the comparison rows.
+export const PRIORITY_CHECKS: Record<string, CheckDef> = {
+  gcc_customers: {
+    label: "Sells to Gulf (GCC) customers",
+    polarity: "good",
+    instructions:
+      "Does the company sell to, or plan to sell to, customers in the Gulf (GCC) countries such as the UAE or Saudi Arabia?",
+  },
+  raising_capital: {
+    label: "Likely to raise venture capital",
+    polarity: "good",
+    instructions: "Is this a startup that is likely to raise venture capital in the next two years?",
+  },
+  hiring_abroad: {
+    label: "Brings staff from abroad",
+    polarity: "good",
+    instructions: "Will the company bring several employees from other countries to work in its Abu Dhabi office?",
+  },
+  cost_sensitive: {
+    label: "Costs weigh heavily",
+    polarity: "good",
+    instructions:
+      "Is the company early-stage or running on tight margins, so that setup and living costs weigh heavily in the decision to move?",
+  },
+};
+
 export interface BatchResult {
   judgments: Judgment[];
   meta: ChecksMeta;
@@ -171,4 +198,22 @@ export async function verifyClaims(
     console.error("TypeSafe claim check failed:", err instanceof Error ? err.message : "unknown error");
     return { p: {}, meta: { live: false, error: "unavailable" } };
   }
+}
+
+export function runPriorityChecks(state: CaseState): Promise<BatchResult> {
+  const p = state.profile;
+  return runBatch(PRIORITY_CHECKS, {
+    company: {
+      name: p.company,
+      description: p.description,
+      stage: p.stage,
+      home_base: p.homeBase,
+      funding_raised_usd: p.fundingUsd,
+      payment_countries: p.transactionCountries,
+    },
+    move: {
+      people_moving: relocating(p).map((x) => x.role),
+      family_moving: p.dependants.map((d) => d.relation),
+    },
+  });
 }

@@ -1,26 +1,383 @@
 @import "tailwindcss";
 
+/* Atlas71 design tokens. Light only, tuned for projectors and phones in daylight.
+   Every colour in the UI traces back to one of these. The *-ink shades carry small text
+   on the matching *-soft fills, where the base hue would fall under 4.5:1. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f6f5f1;
+  --surface: #ffffff;
+  --sunken: #fbfaf7;
+  --ink: #101828;
+  --muted: #5d6675;
+  --line: #e6e3da;
+  --line-strong: #cfcbbf;
+
+  --accent: #0e7c74;
+  --accent-ink: #0a5f59;
+  --accent-soft: #e3f1ef;
+
+  --gold: #b7862b;
+  --gold-ink: #8a6416;
+  --gold-soft: #f8f1e1;
+
+  --good: #1f7a4d;
+  --good-soft: #e6f2eb;
+  --warn: #b26b00;
+  --warn-ink: #8f5600;
+  --warn-soft: #fbf1df;
+  --bad: #b42318;
+  --bad-soft: #fdecea;
+
+  --elev-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.12);
+  --elev-lift: 0 2px 4px rgb(16 24 40 / 0.05), 0 16px 32px -14px rgb(16 24 40 / 0.18);
+  --elev-float: 0 4px 10px rgb(16 24 40 / 0.06), 0 24px 48px -16px rgb(16 24 40 / 0.22);
+
+  /* Safe areas, so the standalone PWA clears the notch and the home indicator. */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-card: 14px;
+  --shadow-card: var(--elev-card);
+  --shadow-lift: var(--elev-lift);
+  --shadow-float: var(--elev-float);
+
+  --breakpoint-wide: 1100px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    background: var(--paper);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  button,
+  a,
+  summary,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  textarea {
+    font: inherit;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* The app shell fills the visual viewport. --app-h and --app-top track visualViewport, so on iOS
+   the composer sits on top of the keyboard instead of under it (see useAppViewport). */
+.atlas-app {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--app-top, 0px);
+  height: 100vh;
+  height: 100dvh;
+  height: var(--app-h, 100dvh);
+}
+
+.atlas-safe-x {
+  padding-left: max(1rem, var(--sal));
+  padding-right: max(1rem, var(--sar));
+}
+
+.atlas-safe-top {
+  padding-top: var(--sat);
+}
+
+.atlas-safe-bottom {
+  padding-bottom: max(0.75rem, var(--sab));
+}
+
+/* With the keyboard up, the home-indicator inset is hidden behind it. */
+:root[data-kb="open"] .atlas-safe-bottom {
+  padding-bottom: 0.5rem;
+}
+
+.atlas-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.atlas-no-scrollbar {
+  scrollbar-width: none;
+}
+.atlas-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- motion: transform and opacity only ---------- */
+
+@keyframes atlas-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes atlas-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes atlas-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes atlas-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes atlas-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* The paid stamp lands like a rubber stamp on a receipt: the one orchestrated moment. */
+@keyframes atlas-stamp {
+  0% {
+    opacity: 0;
+    transform: rotate(-9deg) scale(1.6);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-9deg) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-9deg) scale(1);
+  }
+}
+
+@keyframes atlas-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes atlas-sheet-out {
+  from {
+    transform: translateY(var(--drag, 0px));
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes atlas-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes atlas-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.atlas-rise {
+  animation: atlas-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.atlas-fade {
+  animation: atlas-fade 200ms ease-out both;
+}
+
+.atlas-spin {
+  animation: atlas-spin 900ms linear infinite;
+  transform-origin: center;
+}
+
+.atlas-dot {
+  animation: atlas-dot 1.2s ease-in-out infinite both;
+}
+
+.atlas-pulse {
+  animation: atlas-pulse 1.4s ease-in-out infinite;
+}
+
+.atlas-stamp {
+  transform: rotate(-9deg);
+  animation: atlas-stamp 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 120ms both;
+}
+
+/* Voice: a pure-CSS waveform while the mic is listening (scaleY keeps it off the layout path). */
+@keyframes atlas-voice {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.atlas-voice-bar {
+  display: block;
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  transform-origin: center;
+  animation: atlas-voice 1.1s ease-in-out infinite;
+}
+
+.atlas-voice-bar-sm {
+  height: 14px;
+  background: currentColor;
+  animation-duration: 0.8s;
+}
+
+/* ---------- tracker sheet: a bottom sheet on phones, a side drawer from 768px ---------- */
+
+.atlas-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--sat) - 1.5rem);
+  padding: 0;
+  border: 0;
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--elev-float);
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.atlas-sheet[open] {
+  display: flex;
+  flex-direction: column;
+  /* backwards, not both: a forwards fill would pin the transform and freeze drag-to-dismiss. */
+  animation: atlas-sheet-in 300ms cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+}
+
+.atlas-sheet[data-closing] {
+  animation: atlas-sheet-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.atlas-sheet::backdrop {
+  background: rgb(16 24 40 / 0.42);
+  animation: atlas-fade 220ms ease-out both;
+}
+
+.atlas-sheet[data-closing]::backdrop {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+
+@media (min-width: 768px) {
+  .atlas-sheet {
+    inset: 0 0 0 auto;
+    width: min(420px, 100vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .atlas-sheet[open] {
+    animation-name: atlas-drawer-in;
+  }
+  .atlas-sheet[data-closing] {
+    animation-name: atlas-drawer-out;
+  }
+}
+
+:root.atlas-locked,
+:root.atlas-locked body {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }

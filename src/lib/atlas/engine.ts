@@ -133,6 +133,7 @@ export function isBankFileStale(state: CaseState): boolean {
 export const FACT_LABELS: Record<string, string> = {
   company: "the company name",
   description: "what the company sells and to whom",
+  homeBase: "where the company and founders are based today",
   people: "who is moving to Abu Dhabi",
   relocating: "who is moving to Abu Dhabi",
   dependants: "whether any family members are moving too",
@@ -149,6 +150,7 @@ export function missingFacts(state: CaseState): { route: string[]; bank: string[
   const route: string[] = [];
   if (!p.company) route.push("company");
   if (!p.description) route.push("description");
+  if (!p.homeBase) route.push("homeBase");
   if (!p.people.length) route.push("people");
   for (const person of p.people) {
     if (state.inputs[`relocating:${person.id}`] === "unconfirmed") route.push(`relocating:${person.name}`);
