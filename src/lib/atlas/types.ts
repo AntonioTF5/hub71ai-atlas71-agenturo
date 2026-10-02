@@ -25,7 +25,7 @@ export interface Profile {
   stage: string | null;
   fundingUsd: number | null;
   fundingSource: string | null;      // founder-confirmed only, never inferred
-  parentEntity: string | null;       // e.g. "Routely Inc., Delaware C-corp"
+  parentEntity: string | null;       // e.g. the founders' existing company abroad, with its country
   ownership: string | null;          // founder-confirmed chain + percentages
   hub71Letter: "none" | "applied" | "have" | null;
   sellsOnshoreUAE: boolean | null;
@@ -91,6 +91,16 @@ export interface PriceCardData { routeName: string; totalAed: number; lines: Pri
 export interface FilingsCardData { items: { provider: string; title: string; who?: string; ref: string; filedOn: string; etaOn: string; status: Filing["status"] }[] }
 export interface UpdatesCardData { from: string; to: string; events: SimEvent[]; waitingOn: string[] }
 export interface BankFileCardData { bank: string; sections: { title: string; body: string }[]; missing: string[]; checks: Judgment[]; checksMeta: ChecksMeta; ready: boolean }
+// Added after the spec (user request, 2 Oct): the sandbox checkout shown when the founder presses Confirm & pay.
+export interface CheckoutCardData {
+  merchant: string;                      // "Atlas71"
+  description: string;                   // "Abu Dhabi landing · ADGM Tech Startup Licence"
+  amountAed: number;
+  lines: { label: string; amountAed: number }[];   // Atlas71 fee, government fees, providers
+  payer: { name: string; email: string; company: string | null; country: string | null };
+  method: { brand: string; last4: string; expiry: string; label: string };   // a published test card, never a real one
+  receipt: string; paidOn: string; status: "succeeded";
+}
 // Added after the spec (user request, 2 Oct): the "does Abu Dhabi fit your business and life?" comparison.
 export type CompareTopic = "taxes" | "opportunities" | "residency" | "work" | "costs";
 export interface CompareRow { topic: CompareTopic; label: string; abuDhabi: string; home: string; edge: "abu_dhabi" | "home" | "even"; matters?: boolean; sourceIds: string[] }
@@ -110,7 +120,8 @@ export type Card =
   | { kind: "updates"; data: UpdatesCardData }
   | { kind: "bank_file"; data: BankFileCardData }
   | { kind: "export"; data: { generatedOn: string } }
-  | { kind: "compare"; data: CompareCardData };
+  | { kind: "compare"; data: CompareCardData }
+  | { kind: "checkout"; data: CheckoutCardData };
 
 // ---------- Chat + stream protocol ----------
 export type MessagePart =

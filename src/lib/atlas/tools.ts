@@ -8,6 +8,7 @@ import { ROUTES, STEPS } from "./kb.ts";
 import {
   advance,
   buildPlan,
+  checkoutCard,
   completeBankFile,
   decideRoute,
   describeFact,
@@ -44,6 +45,9 @@ export interface ToolContext {
   conversation?: { role: "user" | "assistant"; content: string }[];
 }
 
+/** How long the checkout card animates (pre-filled, processing, confirmed) before the filings appear. */
+export const CHECKOUT_MS = 2400;
+
 /** A claim is kept unless TypeSafe finds it clearly unsupported by the conversation. */
 const CLAIM_MIN_P = 0.4;
 
@@ -75,7 +79,7 @@ export const TOOLS: OpenAI.Chat.ChatCompletionFunctionTool[] = [
         type: "string",
         description: "Only once the founder has said who invested, how much and how (e.g. SAFEs). Omit it until then; never write a placeholder.",
       },
-      parentEntity: { type: "string", description: 'An existing parent company, e.g. "Routely Inc., Delaware C-corp".' },
+      parentEntity: { type: "string", description: "An existing company that will own the UAE company, with its country, only as the founder stated it." },
       ownership: {
         type: "string",
         description: "Only once the founder has stated the chain from the UAE company up to the people, with percentages. Omit it until then.",
@@ -500,17 +504,24 @@ const EXECUTORS: Record<string, Executor> = {
     return ok({ route, name: ROUTES[route as NonNullable<CaseState["route"]>].name, note: "Route switched. Show the price or the plan." });
   },
 
-  start_landing(_args, ctx) {
+  async start_landing(_args, ctx) {
     if (ctx.action?.type !== "pay") {
       return fail("Only the founder can pay, by pressing Confirm & pay on the price card. Ask them to press it.");
     }
     const r = startLanding(ctx.state);
     if (r.error) return fail(r.error);
+    // The sandbox checkout plays first (pre-filled, processing, confirmed); filings follow once it settles.
+    const checkout = checkoutCard(r.state);
+    if (checkout) {
+      ctx.emit({ t: "card", card: { kind: "checkout", data: checkout } });
+      await new Promise((resolve) => setTimeout(resolve, CHECKOUT_MS));
+    }
     ctx.state = r.state;
     ctx.emit({ t: "state", state: r.state });
     if (r.filed.length) ctx.emit({ t: "card", card: { kind: "filings", data: filingsCard(r.state, r.filed) } });
     return ok({
       paid: aed(r.state.paid?.amountAed ?? 0),
+      receipt: checkout?.receipt,
       filed: filedSummary(r.state, r.filed),
       note: "Say once that this is a sandbox with simulated filings. Confirm the price is locked and what's filed, and that the clock moves with the tracker buttons (+2 weeks, Next event).",
     });

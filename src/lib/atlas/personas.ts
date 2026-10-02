@@ -8,6 +8,7 @@ export interface Persona {
   name: string;
   tagline: string;
   founder: string;
+  email: string; // the fictional account shown in the sandbox sign-in and checkout
   opener: string; // sent as the founder's first message
 }
 
@@ -17,6 +18,7 @@ export const PERSONAS: Persona[] = [
     name: "Routely",
     tagline: "B2B SaaS · Bangalore · moving with family",
     founder: "Meera Iyer, CEO",
+    email: "meera@routely.io",
     opener:
       "Hi, I'm Meera Iyer, CEO of Routely (routely.io). We sell route-planning software to delivery fleets: a web app for dispatchers and a mobile app for drivers, on monthly subscriptions, to logistics companies in India and the Gulf. " +
       "We're a seed-stage startup based in Bangalore, and we've raised $600k. " +
@@ -28,6 +30,7 @@ export const PERSONAS: Persona[] = [
     name: "Byteforge",
     tagline: "Dev agency · Cairo · 4 people moving",
     founder: "Omar Farouk, founder",
+    email: "omar@byteforge.dev",
     opener:
       "Hello, I'm Omar Farouk, founder of Byteforge (byteforge.dev). We're a 25-person software development agency in Cairo: we build custom web and mobile apps for clients in Egypt, the Gulf and Europe, billed per project. " +
       "Four of us are moving to Abu Dhabi to open a regional office: me, our CTO Laila Mansour, and two senior engineers, Karim Adel and Nour Hassan. " +

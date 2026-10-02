@@ -4,6 +4,7 @@ import type { CaseState, Judgment } from "../src/lib/atlas/types.ts";
 import {
   advance,
   buildPlan,
+  checkoutCard,
   completeBankFile,
   decideRoute,
   fileReady,
@@ -295,4 +296,15 @@ test("a bank fact that only says it's missing is not saved", () => {
   assert.equal(state.profile.ownership, null);
   assert.equal(state.profile.fundingUsd, 600000);
   assert.equal(errors.length, 2);
+});
+
+test("the sandbox checkout matches the locked price and uses a test card", () => {
+  assert.equal(checkoutCard(routely()), null, "no checkout before payment");
+  const paid = startLanding(routely()).state;
+  const c = checkoutCard(paid)!;
+  assert.equal(c.amountAed, 40075);
+  assert.equal(c.lines.reduce((t, l) => t + l.amountAed, 0), 40075);
+  assert.equal(c.payer.email, "meera@routely.io");
+  assert.equal(c.method.last4, "4242");
+  assert.match(c.receipt, /^A71-RCPT-26-\d{6}$/);
 });

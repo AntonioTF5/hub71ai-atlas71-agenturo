@@ -28,6 +28,8 @@ export function cardNote(card: Card): string {
             .join("; ") || card.data.missing.join("; ")})`;
     case "export":
       return "(shown: export card)";
+    case "checkout":
+      return `(shown: sandbox checkout, paid ${aed(card.data.amountAed)} with test card ending ${card.data.method.last4}, receipt ${card.data.receipt})`;
     case "compare":
       return `(shown: Abu Dhabi vs ${card.data.homeLabel} comparison: ${card.data.verdict})`;
   }

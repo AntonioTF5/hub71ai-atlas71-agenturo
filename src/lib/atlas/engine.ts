@@ -2,6 +2,7 @@
 // Pure functions over plain-JSON CaseState, shared by the server tools and the client tracker.
 import type {
   CaseState,
+  CheckoutCardData,
   Dependant,
   Filing,
   FilingsCardData,
@@ -978,6 +979,43 @@ export function filingsCard(state: CaseState, filings: Filing[]): FilingsCardDat
 
 export function updatesCard(state: CaseState, from: string, to: string, events: SimEvent[]): UpdatesCardData {
   return { from, to, events, waitingOn: waitingOn(state) };
+}
+
+/** The sandbox checkout for a paid case: the founder's details pre-filled, a published test card, a receipt. */
+export function checkoutCard(state: CaseState): CheckoutCardData | null {
+  const route = state.route;
+  const q = quote(state);
+  if (!isRoute(route) || !q || !state.paid) return null;
+  const p = state.profile;
+  const payer = relocating(p).find((x) => x.role === "founder") ?? p.people[0];
+  const name = payer?.name ?? "Founder";
+  const domain =
+    (p.website ?? "")
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .split("/")[0] || `${slug(p.company ?? "company")}.com`;
+  const sum = (group: string) => q.lines.filter((l) => l.group === group).reduce((t, l) => t + l.amountAed, 0);
+  const lines = [
+    { label: "Atlas71 landing fee", amountAed: sum("Atlas") },
+    { label: "Government fees, at cost", amountAed: sum("Government") },
+    { label: "Providers, at cost", amountAed: sum("Provider") },
+  ].filter((l) => l.amountAed > 0);
+  return {
+    merchant: "Atlas71",
+    description: `Abu Dhabi landing for ${p.company ?? "your company"} · ${ROUTES[route].name}`,
+    amountAed: state.paid.amountAed,
+    lines,
+    payer: {
+      name,
+      email: `${slug(firstName(name)).replace(/-/g, "")}@${domain}`,
+      company: p.company,
+      country: p.homeBase?.split(",").pop()?.trim() ?? null,
+    },
+    method: { brand: "Visa", last4: "4242", expiry: "12/29", label: "Test card" },
+    receipt: `A71-RCPT-${state.paid.on.slice(2, 4)}-${digits(`${p.company ?? "company"}|receipt`, 6)}`,
+    paidOn: state.paid.on,
+    status: "succeeded",
+  };
 }
 
 // ---------- state hygiene ----------
