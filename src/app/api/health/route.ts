@@ -1,3 +1,4 @@
+import { DEFAULT_MODEL } from "@/lib/llm";
 import { typesafe } from "@/lib/typesafe";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +14,26 @@ function describe(key: string | undefined) {
 }
 
 async function checkOpenRouter() {
+  const headers = {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    "Content-Type": "application/json",
+  };
   try {
-    // Free endpoint that returns info about the calling key.
-    const res = await fetch("https://openrouter.ai/api/v1/key", {
-      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+    // Free endpoint that returns info about the calling key. `label` is dropped: it can contain part of the key.
+    const keyRes = await fetch("https://openrouter.ai/api/v1/key", { headers, cache: "no-store" });
+    if (!keyRes.ok) return { ok: false, error: `${keyRes.status} ${await keyRes.text()}` };
+    const keyInfo = (await keyRes.json()).data ?? {};
+    delete keyInfo.label;
+
+    // A key can pass /key yet be refused for completions (e.g. a provisioning key), so try a 1-token call.
+    const chatRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers,
       cache: "no-store",
+      body: JSON.stringify({ model: DEFAULT_MODEL, max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
     });
-    return res.ok ? { ok: true } : { ok: false, error: `${res.status} ${await res.text()}` };
+    const completion = chatRes.ok ? "ok" : `${chatRes.status} ${await chatRes.text()}`;
+    return { ok: chatRes.ok, keyInfo, completion };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
