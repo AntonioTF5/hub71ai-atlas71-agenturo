@@ -28,8 +28,8 @@ import {
   waitingItems,
   whoFor,
 } from "./engine.ts";
-import { applyProfile } from "./profile.ts";
-import { runBankChecks, runFitChecks } from "./checks.ts";
+import { applyProfile, factClaims, withoutClaims } from "./profile.ts";
+import { runBankChecks, runFitChecks, verifyClaims } from "./checks.ts";
 import { aed, fmtDateLong, fmtSimDay } from "./format.ts";
 
 export interface ToolContext {
@@ -39,7 +39,12 @@ export interface ToolContext {
   /** Text shown since the last card, activity or choices in this response. */
   freshText?: () => string;
   say?: (text: string) => void;
+  /** The latest turns as text, for checking saved facts against the founder's words. */
+  conversation?: { role: "user" | "assistant"; content: string }[];
 }
+
+/** A claim is kept unless TypeSafe finds it clearly unsupported by the conversation. */
+const CLAIM_MIN_P = 0.4;
 
 type Args = Record<string, unknown>;
 type Executor = (args: Args, ctx: ToolContext) => string | Promise<string>;
@@ -303,13 +308,33 @@ function bankHint(state: CaseState): string | undefined {
 }
 
 const EXECUTORS: Record<string, Executor> = {
-  save_profile(args, ctx) {
-    const { state, changed, errors } = applyProfile(ctx.state, args);
+  async save_profile(args, ctx) {
+    // Who's moving, the Hub71 letter and the bank facts must come from the founder: TypeSafe checks each
+    // new one against the conversation, and anything the founder didn't say is dropped so the agent asks.
+    const claims = factClaims(ctx.state, args);
+    let dropped: typeof claims = [];
+    if (claims.length && ctx.conversation?.length) {
+      ctx.emit({ t: "activity", d: "Checking your answers with TypeSafe…" });
+      const { p, meta } = await verifyClaims(ctx.conversation, claims);
+      if (meta.live) dropped = claims.filter((c) => (p[c.key] ?? 1) < CLAIM_MIN_P);
+      const n = claims.length;
+      ctx.emit({
+        t: "activity",
+        d: meta.live
+          ? `Checked ${n} ${n === 1 ? "fact" : "facts"} against your words with TypeSafe · ${meta.latencyMs} ms${dropped.length ? ` · ${dropped.length} to confirm` : ""}`
+          : "TypeSafe didn't answer; saved what you said",
+        done: true,
+      });
+    }
+    const { state, changed, errors } = applyProfile(ctx.state, withoutClaims(args, dropped));
     ctx.state = state;
     if (changed.length) ctx.emit({ t: "state", state });
     const missing = missingFacts(state);
     return ok({
       saved: changed,
+      notSaved: dropped.length
+        ? dropped.map((c) => `${c.label}: the founder hasn't said this, so it wasn't saved. Ask them.`)
+        : undefined,
       errors: errors.length ? errors : undefined,
       missingBeforeRoute: missing.route.map(describeFact),
       missingForBankFile: missing.bank.map(describeFact),

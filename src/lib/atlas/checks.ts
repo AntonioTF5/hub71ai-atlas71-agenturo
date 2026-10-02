@@ -147,3 +147,28 @@ export function runBankChecks(state: CaseState, sections: { title: string; body:
     },
   });
 }
+
+/** One TypeSafe batch: is each claim supported by what the founder actually said? Returns p(yes) per key. */
+export async function verifyClaims(
+  conversation: { role: "user" | "assistant"; content: string }[],
+  claims: { key: string; question: string }[],
+): Promise<{ p: Record<string, number>; meta: ChecksMeta }> {
+  if (!claims.length) return { p: {}, meta: { live: true, latencyMs: 0 } };
+  if (!process.env.TYPESAFE_API_KEY?.trim()) return { p: {}, meta: { live: false, error: "setup_required" } };
+  const questions: Record<string, NoulQuestion> = Object.fromEntries(claims.map((c, i) => [`c${i}`, noul(c.question)]));
+  const state = {
+    conversation: conversation.slice(-6).map((m) => ({
+      speaker: m.role === "user" ? "Founder" : "Atlas71",
+      text: m.content.slice(0, 1500),
+    })),
+  };
+  const started = Date.now();
+  try {
+    const res = await typesafe().systemOne({ state, questions }, { timeout: 6000, retry: { maxRetries: 1 } });
+    const p = Object.fromEntries(claims.map((c, i) => [c.key, Number(res.answers[`c${i}`]?.noul ?? 1)]));
+    return { p, meta: { live: true, latencyMs: Date.now() - started, model: res.model } };
+  } catch (err) {
+    console.error("TypeSafe claim check failed:", err instanceof Error ? err.message : "unknown error");
+    return { p: {}, meta: { live: false, error: "unavailable" } };
+  }
+}

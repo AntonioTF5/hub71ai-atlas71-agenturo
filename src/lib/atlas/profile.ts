@@ -223,3 +223,86 @@ export function applyProfile(input: CaseState, raw: unknown): ProfileUpdate {
 
   return { state, changed, errors };
 }
+
+// ---------- facts that must come from the founder's own words ----------
+
+export interface FactClaim {
+  key: string; // "hub71Letter", "fundingSource", "relocating:<name>"
+  label: string; // shown to the model when a claim is dropped
+  question: string; // a TypeSafe yes/no question about the conversation
+}
+
+const quoted = (v: unknown) => `"${String(v).slice(0, 300)}"`;
+
+/**
+ * Sensitive facts in a save_profile call that are new or changed: who is relocating, the Hub71 letter, and the
+ * bank facts. Each one is checked against the conversation before it's stored, so the agent can't assume them.
+ */
+export function factClaims(state: CaseState, raw: unknown): FactClaim[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const args = raw as Record<string, unknown>;
+  const p = state.profile;
+  const claims: FactClaim[] = [];
+  const said = "In this conversation, has the founder said";
+  const letter = args.hub71Letter;
+  if ((letter === "none" || letter === "applied" || letter === "have") && letter !== p.hub71Letter) {
+    const what =
+      letter === "none"
+        ? "that the company does not have a Hub71 eligibility letter"
+        : letter === "applied"
+          ? "that they have applied for a Hub71 eligibility letter but don't have it yet"
+          : "that they already have a Hub71 eligibility letter";
+    claims.push({ key: "hub71Letter", label: "the Hub71 letter status", question: `${said} ${what}?` });
+  }
+  if (Array.isArray(args.people)) {
+    for (const item of args.people) {
+      const a = item as Record<string, unknown> | null;
+      if (!a || typeof a.name !== "string" || typeof a.relocating !== "boolean" || a.remove === true) continue;
+      const idx = findPerson(p.people, a.name);
+      const existing = idx >= 0 ? p.people[idx] : undefined;
+      const known = existing && state.inputs[`relocating:${existing.id}`] !== "unconfirmed";
+      if (known && existing.relocating === a.relocating) continue;
+      const name = existing?.name ?? a.name.trim();
+      claims.push({
+        key: `relocating:${name}`,
+        label: `whether ${name} is relocating`,
+        question: a.relocating
+          ? `${said} that ${name} is moving (relocating) to Abu Dhabi?`
+          : `${said} that ${name} is not moving to Abu Dhabi, at least for now?`,
+      });
+    }
+  }
+  const bank: [string, string, (v: unknown) => string][] = [
+    ["fundingSource", "the source of funds", (v) => `explained where the company's money came from (who invested, how much), consistent with ${quoted(v)}`],
+    ["ownership", "the ownership", (v) => `stated who owns the company, consistent with ${quoted(v)}`],
+    ["monthlyVolumeUsd", "the monthly volume", (v) => `given an expected monthly payment volume of about USD ${String(v)}`],
+    ["transactionCountries", "the transaction countries", (v) => `said which countries payments will come from or go to, consistent with ${quoted(v)}`],
+  ];
+  for (const [key, label, what] of bank) {
+    const v = args[key];
+    if (v === undefined || v === null || v === "" || v === p[key as keyof Profile]) continue;
+    claims.push({ key, label, question: `${said} ${what(v)}?` });
+  }
+  return claims;
+}
+
+/** The same arguments without the claims that weren't supported by the founder's words. */
+export function withoutClaims(raw: unknown, dropped: FactClaim[]): unknown {
+  if (!dropped.length || !raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const args = { ...(raw as Record<string, unknown>) };
+  for (const c of dropped) {
+    if (c.key.startsWith("relocating:")) {
+      const name = c.key.slice("relocating:".length);
+      if (Array.isArray(args.people)) {
+        args.people = args.people.map((item) => {
+          const a = item as Record<string, unknown> | null;
+          if (!a || typeof a.name !== "string" || findPerson([{ id: "x", name, role: "founder", relocating: false }], a.name) < 0) return item;
+          const rest = { ...a };
+          delete rest.relocating;
+          return rest;
+        });
+      }
+    } else delete args[c.key];
+  }
+  return args;
+}

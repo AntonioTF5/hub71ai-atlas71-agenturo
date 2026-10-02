@@ -17,7 +17,7 @@ import {
   verdictFor,
   waitingOn,
 } from "../src/lib/atlas/engine.ts";
-import { applyProfile } from "../src/lib/atlas/profile.ts";
+import { applyProfile, factClaims, withoutClaims } from "../src/lib/atlas/profile.ts";
 import { emptyCase } from "../src/lib/atlas/personas.ts";
 import { addDays } from "../src/lib/atlas/format.ts";
 
@@ -240,4 +240,25 @@ test("a family member saved as a person is moved out of the visa holders", () =>
   });
   assert.deepEqual(state.profile.people.map((p) => p.name), ["Meera Iyer"]);
   assert.equal(state.profile.dependants.length, 1);
+});
+
+test("sensitive facts become TypeSafe claims, and dropped claims are not saved", () => {
+  const args = {
+    company: "Routely",
+    hub71Letter: "none",
+    fundingSource: "$600k from 8 angels via SAFEs",
+    people: [
+      { name: "Meera Iyer", role: "founder", relocating: true },
+      { name: "Arjun Rao", role: "founder", relocating: false },
+    ],
+  };
+  const claims = factClaims(emptyCase(START), args);
+  assert.deepEqual(claims.map((c) => c.key).sort(), ["fundingSource", "hub71Letter", "relocating:Arjun Rao", "relocating:Meera Iyer"]);
+  const dropped = claims.filter((c) => c.key === "hub71Letter" || c.key === "relocating:Arjun Rao");
+  const { state } = applyProfile(emptyCase(START), withoutClaims(args, dropped));
+  assert.equal(state.profile.hub71Letter, null);
+  assert.equal(state.profile.fundingSource, "$600k from 8 angels via SAFEs");
+  assert.deepEqual(missingFacts(state).route, ["description", "relocating:Arjun Rao", "dependants", "hub71Letter"]);
+  // an unchanged, already-confirmed fact isn't re-checked
+  assert.deepEqual(factClaims(state, { people: [{ name: "Meera", relocating: true }] }), []);
 });

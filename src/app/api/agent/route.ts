@@ -268,12 +268,13 @@ export async function POST(req: Request) {
     return Response.json({ error: "Expected a JSON body." }, { status: 400 });
   }
 
+  const history = sanitizeMessages(body.messages);
   const ctx: ToolContext = {
     state: normalizeState(body.state, localToday()),
     action: sanitizeAction(body.action),
     emit: () => {},
+    conversation: history.slice(-6),
   };
-  const history = sanitizeMessages(body.messages);
   if (!history.length) return Response.json({ error: "Expected at least one user message." }, { status: 400 });
 
   const stream = new ReadableStream<Uint8Array>({
