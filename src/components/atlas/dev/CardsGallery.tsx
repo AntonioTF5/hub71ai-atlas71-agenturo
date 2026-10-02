@@ -73,6 +73,7 @@ const STREAMING: UiMessage[] = [
     pending: true,
     parts: [
       { type: "activity", text: "Saved Byteforge's facts", done: true },
+      { type: "activity", text: "Couldn't read icp.gov.ae", done: true, failed: true },
       { type: "activity", text: "Checking eligibility with TypeSafe…", done: false },
       { type: "text", text: "Byteforge builds software for clients, so I'm checking whether the **startup licence** fits [source:adg" },
     ],

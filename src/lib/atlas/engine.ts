@@ -1100,9 +1100,13 @@ export function entryDate(state: CaseState, answer: string): string | null {
   const iso = /\b(\d{4}-\d{2}-\d{2})\b/.exec(a)?.[1];
   if (iso && isIsoDate(iso)) return iso < state.today ? state.today : iso;
   if (/already|in the uae|here now|i'?m here|today/i.test(a)) return state.today;
+  // "9 Oct" must not match inside "19 Oct": a day-and-month is a match only when no digit comes before it.
+  const lower = a.toLowerCase();
   for (let d = 0; d <= 90; d++) {
     const on = addDays(state.today, d);
-    if (a.toLowerCase().includes(fmtDay(on).toLowerCase()) || a.toLowerCase().endsWith(fmtDate(on).toLowerCase())) return on;
+    const dayMonth = fmtDate(on).toLowerCase();
+    const at = lower.indexOf(dayMonth);
+    if (at >= 0 && !/\d/.test(lower[at - 1] ?? "") && !/\d/.test(lower[at + dayMonth.length] ?? "")) return on;
   }
   return null;
 }
@@ -1156,7 +1160,7 @@ export function provideInput(input: CaseState, key: string, value: string): SimR
     v = on;
   }
   // Consent is a yes only when the founder clearly said yes.
-  if (resolved.startsWith("consent:")) v = /^(y|yes|ok|okay|sure|approve|approved|apply|please|go ahead|true)\b/i.test(v) ? "yes" : "no";
+  if (resolved.startsWith("consent:")) v = saysYes(v) ? "yes" : "no";
   // A certificate that isn't legalised yet is an answer, not the document: the dependant visa keeps waiting.
   if (resolved.startsWith("documents:") && NOT_LEGALISED.test(v)) v = DOCS_NOT_YET;
   const state = clone(input);
@@ -1199,6 +1203,20 @@ export interface WaitingItem {
 }
 
 const CONSENT_OPTIONS = ["Yes, apply for me", "Not yet"];
+
+/**
+ * An explicit yes in the founder's words: the consent button, or a reply that starts with yes and doesn't
+ * hedge ("OK, but not yet" and "Please don't apply yet" are no). Of a message, only the last paragraph counts.
+ */
+export function saysYes(text: string): boolean {
+  const t = (text.split(/\n{2,}/).filter((s) => s.trim()).pop() ?? "").trim().replace(/\s+/g, " ");
+  if (t.toLowerCase() === CONSENT_OPTIONS[0].toLowerCase()) return true;
+  return (
+    /^(yes|yeah|yep|ok(ay)?|sure|go ahead|approved?)\b/i.test(t) &&
+    !/\b(not|no|don['’]?t|can['’]?t|won['’]?t|later|wait|hold|first|before)\b/i.test(t)
+  );
+}
+
 const IDENTITY_OPTIONS = ["Use my saved passports", "I'll upload photos"];
 
 // ---------- before payment: payment comes last ----------

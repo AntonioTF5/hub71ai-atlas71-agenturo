@@ -6,6 +6,8 @@ import {
   hostLabel,
   looksLikePdf,
   MAX_URL_CHARS,
+  mayRead,
+  namedHosts,
   pdfFileName,
   uniqueByUrl,
   webError,
@@ -74,4 +76,21 @@ test("web failures tell the model what to do instead, and never pretend", () => 
   assert.match(webError(undefined, "read"), /couldn't be read/);
   assert.equal(webFailureRow("not_configured", "x"), "The web isn't set up here");
   assert.equal(webFailureRow("unavailable", "Couldn't read adgm.com"), "Couldn't read adgm.com");
+});
+
+test("fetch_url reads only hosts the founder wrote, trusted hosts, or exact search results", () => {
+  const hosts = namedHosts([
+    "We're Routely (routely.io), mail meera@routely.co.in. See https://WWW.Example.org/pricing?x=1",
+    "(attached: passport.pdf)\nIt costs 3.5 e.g. in the U.S.",
+  ]);
+  for (const h of ["routely.io", "routely.co.in", "example.org"]) assert.ok(hosts.has(h), h);
+  assert.ok(![...hosts].some((h) => h === "e.g" || h === "u.s" || h.startsWith("3.")));
+
+  const allowed = { hosts: new Set([...hosts, "adgm.com"]), urls: new Set(["https://u.ae/en/visas"]) };
+  assert.ok(mayRead("https://www.routely.io/about", allowed));
+  assert.ok(mayRead("https://adgm.com/fees?lang=en", allowed));
+  assert.ok(mayRead("https://u.ae/en/visas", allowed));
+  assert.ok(!mayRead("https://u.ae/en/other", allowed), "a search result is allowed exactly, not its whole host");
+  assert.ok(!mayRead("https://x.evil/?c=Routely&p=Meera", allowed));
+  assert.ok(!mayRead("https://routely.io.evil.com/", allowed));
 });

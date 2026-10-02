@@ -4,6 +4,7 @@ import type { CaseState } from "../src/lib/atlas/types.ts";
 import {
   advance,
   authorisations,
+  entryDate,
   entryOptions,
   identityCard,
   monthsValid,
@@ -12,6 +13,7 @@ import {
   provideInput,
   readyToPay,
   sandboxIdentities,
+  saysYes,
   signatoryOf,
   saveIdentities,
   startLanding,
@@ -100,6 +102,11 @@ test("the Hub71 letter needs a yes before payment; 'Not yet' offers the standard
 
   const no = provideInput(s, "consent:hub71_letter", "Not yet");
   assert.equal(no.state.inputs["consent:hub71_letter"], "no");
+  for (const refusal of ["Please don't apply yet", "OK, but not yet", "Apply later"]) {
+    const r = provideInput(s, "consent:hub71_letter", refusal);
+    assert.equal(r.state.inputs["consent:hub71_letter"], "no", refusal);
+    assert.ok(!readyToPay(r.state), refusal);
+  }
   const item = waitingItems(no.state)[0];
   assert.match(item.label, /switch to the standard ADGM licence/);
   assert.deepEqual(item.options, ["Yes, apply for me", "Switch to the standard licence"]);
@@ -110,6 +117,14 @@ test("the Hub71 letter needs a yes before payment; 'Not yet' offers the standard
   assert.equal(yes.state.inputs["consent:hub71_letter"], "yes");
   assert.equal(yes.filed.length, 0, "the OK is recorded; the application files once they pay");
   assert.ok(startLanding(yes.state).filed.some((f) => f.step === "hub71_letter"));
+});
+
+test("only an explicit, unhedged yes counts as consent", () => {
+  for (const yes of ["Yes, apply for me", "yes", "Yeah go ahead", "OK", "Sure, please do", "Approved"]) assert.ok(saysYes(yes), yes);
+  for (const no of ["Not yet", "Please don't apply yet", "OK, but not yet", "Apply later", "Yes, but wait for my co-founder", "Hold on", "y", "true", ""]) {
+    assert.ok(!saysYes(no), no);
+  }
+  assert.ok(saysYes("Show me the plan first\n\nYes, apply for me"), "the newest paragraph decides");
 });
 
 test("passports are read once before payment, and one that expires too soon holds it", () => {
@@ -230,4 +245,15 @@ test("paying authorises exactly the filings Atlas71 will make", () => {
   assert.ok(!authorisations(routely(), "adgm_tsl").some((l) => l.includes("Hub71")), "no consent, no Hub71 application");
   const legalised = provideInput(s, "documents:all", "They're legalised and ready").state;
   assert.ok(authorisations(legalised, "adgm_tsl").includes("Dependant visas for Rohan and Anya"));
+});
+
+test("the signatory's entry date is read from the offered options without mixing up '4 Oct' and '14 Oct'", () => {
+  const s = routely();
+  assert.equal(entryDate(s, "Landing Fri 9 Oct"), "2026-10-09");
+  assert.equal(entryDate(s, "Landing Wed 14 Oct"), "2026-10-14");
+  assert.equal(entryDate(s, "Landing Mon 19 Oct"), "2026-10-19");
+  assert.equal(entryDate(s, "Sun 4 Oct"), "2026-10-04");
+  assert.equal(entryDate(s, "Already in the UAE"), s.today);
+  assert.equal(entryDate(s, "2026-11-03"), "2026-11-03");
+  assert.equal(entryDate(s, "sometime soon"), null);
 });

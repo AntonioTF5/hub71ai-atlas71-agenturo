@@ -316,9 +316,14 @@ async function prepareImage(file: File, name: string, ctx: PrepareContext): Prom
     update({ name: sentName, mime, bytes: blob.size });
 
     if (!storageUnavailable()) {
-      update({ stage: "uploading", progress: 0, activity: undefined });
+      // "Uploading" only once Blob has handed out a token (its first progress event): with no Blob store
+      // the pill goes straight from here to the inline steps instead of flashing an upload bar.
+      update({ activity: "Preparing…" });
       try {
-        const url = await uploadToBlob(sentName, blob, mime, { signal, onProgress: (progress) => update({ progress }) });
+        const url = await uploadToBlob(sentName, blob, mime, {
+          signal,
+          onProgress: (progress) => update({ stage: "uploading", progress, activity: undefined }),
+        });
         update({ stage: "ready", attachment: { name: sentName, mime, size: file.size, url }, note: `Uploaded · ${formatBytes(blob.size)}` });
         return;
       } catch (err) {
@@ -372,9 +377,12 @@ async function preparePdf(file: File, name: string, ctx: PrepareContext): Promis
   signal.throwIfAborted();
 
   if (!storageUnavailable()) {
-    update({ stage: "uploading", progress: 0, bytes: file.size });
+    update({ bytes: file.size });
     try {
-      const url = await uploadToBlob(name, file, "application/pdf", { signal, onProgress: (progress) => update({ progress }) });
+      const url = await uploadToBlob(name, file, "application/pdf", {
+        signal,
+        onProgress: (progress) => update({ stage: "uploading", progress, activity: undefined }),
+      });
       update({ stage: "ready", attachment: { name, mime: "application/pdf", size: file.size, url }, note: `Uploaded · ${formatBytes(file.size)}` });
       return;
     } catch (err) {

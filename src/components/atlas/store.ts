@@ -53,6 +53,8 @@ const UNDO_MS = 8_000;
  */
 const MAX_REQUEST_BYTES = 4_400_000;
 const TOO_LARGE = "These files are too large to send together. Attach fewer and send again.";
+/** Files live in memory only: after a reload, a failed file turn can't be resent as it was. */
+const FILES_GONE = "Attach the files again to resend them.";
 
 const SERVER_SNAPSHOT: Snapshot = {
   ready: false,
@@ -204,7 +206,9 @@ export function createAtlasStore(): AtlasStore {
       if (live()) {
         controller = null;
         const msg = snap.messages.find((m) => m.id === assistantId);
-        const blank = !!msg && !msg.error && !msg.parts.some((p) => p.type !== "text" || p.text.trim());
+        // Activity rows alone ("Couldn't read icp.gov.ae") aren't a reply: offer Retry.
+        const blank =
+          !!msg && !msg.error && !msg.parts.some((p) => (p.type === "text" && p.text.trim()) || p.type === "card" || p.type === "choices");
         set({
           messages: snap.messages.map((m) => (m.id === assistantId ? settle(m, blank ? NO_REPLY : undefined) : m)),
           busy: false,
@@ -279,6 +283,12 @@ export function createAtlasStore(): AtlasStore {
       const history = snap.messages.slice(0, -1);
       const user = [...history].reverse().find((m) => m.role === "user");
       if (!user) return;
+      if (user.attachments?.length && !pendingFiles.has(user.id)) {
+        // Resending only the "(attached: …)" note would let the model answer about files it can't see.
+        updateMessage(last.id, (m) => ({ ...m, error: FILES_GONE, noRetry: true }));
+        persist();
+        return;
+      }
       const assistant: UiMessage = { id: uid(), role: "assistant", parts: [], pending: true };
       set({ messages: [...history, assistant], busy: true });
       persist();

@@ -27,6 +27,37 @@ export function checkWebUrl(raw: unknown): { url: string } | { error: string } {
   return { url: u.toString() };
 }
 
+const HOST_LIKE = /(?:[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?\.)+[a-z][a-z\d-]{1,62}/gi;
+
+/** Hosts written in text: URLs, bare domains ("routely.io") and email domains, lowercased and without "www.". */
+export function namedHosts(texts: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const text of texts) {
+    for (const m of text.matchAll(HOST_LIKE)) {
+      try {
+        out.add(new URL(`https://${m[0]}`).hostname.replace(/^www\./, ""));
+      } catch {
+        // not a host after all
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * fetch_url reads only pages with a known source, so text in a page or a document can't make the model
+ * send case data to an address of its choosing: a host the founder wrote, a trusted host, or the exact
+ * URL a search returned (all checked with checkWebUrl first).
+ */
+export function mayRead(url: string, allowed: { hosts: Set<string>; urls: Set<string> }): boolean {
+  if (allowed.urls.has(url)) return true;
+  try {
+    return allowed.hosts.has(new URL(url).hostname.replace(/^www\./, ""));
+  } catch {
+    return false;
+  }
+}
+
 /** "adgm.com" for "https://www.adgm.com/fees": the host without "www.". */
 export function hostLabel(url: string): string {
   try {

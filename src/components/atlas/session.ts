@@ -84,14 +84,15 @@ export function applyEvent(msg: UiMessage, ev: StreamEvent): UiMessage {
         parts.push({ type: "activity", text: ev.d, done: false });
         return { ...msg, parts };
       }
+      const failed = ev.failed === true ? { failed: true } : {};
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i];
         if (p.type === "activity" && !p.done) {
-          parts[i] = { type: "activity", text: ev.d || p.text, done: true };
+          parts[i] = { type: "activity", text: ev.d || p.text, done: true, ...failed };
           return { ...msg, parts };
         }
       }
-      parts.push({ type: "activity", text: ev.d, done: true });
+      parts.push({ type: "activity", text: ev.d, done: true, ...failed });
       return { ...msg, parts };
     }
     case "card":
@@ -174,7 +175,9 @@ function sanitizePart(p: unknown): MessagePart | null {
     case "text":
       return typeof p.text === "string" ? { type: "text", text: p.text } : null;
     case "activity":
-      return typeof p.text === "string" ? { type: "activity", text: p.text, done: p.done === true } : null;
+      return typeof p.text === "string"
+        ? { type: "activity", text: p.text, done: p.done === true, ...(p.failed === true ? { failed: true } : {}) }
+        : null;
     case "card":
       return isCard(p.card) ? { type: "card", card: p.card } : null;
     case "choices":
