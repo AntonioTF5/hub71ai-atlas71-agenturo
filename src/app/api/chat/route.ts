@@ -15,11 +15,17 @@ export async function POST(req: Request) {
   }
   const { messages, model, system } = (await req.json()) as Body;
 
-  const stream = await llm().chat.completions.create({
-    model: model ?? DEFAULT_MODEL,
-    stream: true,
-    messages: system ? [{ role: "system", content: system }, ...messages] : messages,
-  });
+  let stream;
+  try {
+    stream = await llm().chat.completions.create({
+      model: model ?? DEFAULT_MODEL,
+      stream: true,
+      messages: system ? [{ role: "system", content: system }, ...messages] : messages,
+    });
+  } catch (err) {
+    const status = (err as { status?: number }).status ?? 500;
+    return new Response(`OpenRouter error: ${(err as Error).message}`, { status });
+  }
 
   const encoder = new TextEncoder();
   return new Response(
