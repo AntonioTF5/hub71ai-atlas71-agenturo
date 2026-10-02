@@ -1,5 +1,6 @@
 // Abu Dhabi and the demo founders' home bases, for the "does Abu Dhabi fit?" comparison.
-// Short, sourced claims (source ids live in kb.ts); living costs are estimates and labelled as such.
+// Short, sourced claims (source ids live in kb.ts), researched and opened on 2 Oct 2026.
+// Living costs are listing averages converted at INR 26.23 and EGP 14.23 per AED (2 Oct 2026): estimates.
 import type { CompareRow } from "./types";
 
 export interface Cell {
@@ -39,21 +40,42 @@ export const UAE: Record<CellKey, Cell> & {
   schoolAed: [number, number];
   costSources: string[];
 } = {
-  corporateTax: { text: "0% up to AED 375k profit, 9% above; 0% on qualifying free-zone income", sources: ["uae-ct"] },
-  personalTax: { text: "None on salaries", sources: ["uae-pit"] },
+  corporateTax: {
+    text: "0% on profit up to AED 375k, 9% above; 0% only on qualifying free-zone income",
+    sources: ["uae-ct-rates", "mof-ct"],
+  },
+  personalTax: { text: "No personal income tax on salaries", sources: ["pwc-uae-indiv"] },
   vat: { text: "5% VAT", sources: ["uae-vat"] },
-  socialSecurity: { text: "None for non-GCC staff; end-of-service gratuity instead", sources: ["uae-gratuity"] },
-  ecosystem: { text: "Hub71: AED 250k in kind + AED 250k via SAFE (selective); Gulf sovereign and VC funds", sources: ["hub71-access"] },
-  market: { text: "GCC customers on your doorstep; one licence covers the UAE free zone", sources: ["adra-dual"] },
-  residency: { text: "2-year visa through your company; you sponsor your spouse and children", sources: ["adgm-gs-fees"] },
-  longTermVisa: { text: "Golden visa for incubator-endorsed founders (5 or 10 years; confirm)", sources: ["golden-visa"] },
-  workWeek: { text: "Monday to Friday", sources: ["uae-workweek"] },
-  languageLaw: { text: "English in business; ADGM courts apply English common law", sources: ["adgm-tsl"] },
-  costOfLiving: { text: "Higher: rent and school fees are the big items", sources: ["ad-rent", "ad-school"] },
-  rentFamilyAed: [90_000, 140_000],
-  rentSingleAed: [60_000, 85_000],
-  schoolAed: [45_000, 95_000],
-  costSources: ["ad-rent", "ad-school"],
+  socialSecurity: {
+    text: "None for non-GCC staff; an end-of-service gratuity instead (21 days' basic pay a year)",
+    sources: ["uae-expat-pension", "adgm-eao-faq"],
+  },
+  ecosystem: {
+    text: "Hub71 Access: AED 250k via SAFE + AED 250k in kind (selective); Mubadala alone manages AED 1.4tn",
+    sources: ["hub71-faqs", "mubadala-2025"],
+  },
+  market: { text: "Inside the GCC common market; mainland sales may need a dual licence", sources: ["mof-gcc", "adra-dual"] },
+  residency: {
+    text: "2-year visa through your company; sponsor your spouse and children",
+    sources: ["uae-work-visa", "uae-family-visa"],
+  },
+  longTermVisa: {
+    text: "Golden visa for incubator-backed founders: 5 to 10 years (official pages differ)",
+    sources: ["golden-visa", "uae-golden-visa"],
+  },
+  workWeek: {
+    text: "Employer sets the weekend; most firms work Monday to Friday; 48-hour cap",
+    sources: ["uae-private-hours", "uae-fact-sheet"],
+  },
+  languageLaw: {
+    text: "Arabic official, English in business; ADGM courts apply English common law",
+    sources: ["uae-fact-sheet", "adgm-common-law"],
+  },
+  costOfLiving: { text: "Higher: a 2-bed on Al Reem is AED 95k–155k a year", sources: ["bayut-reem", "pf-reem-2br"] },
+  rentFamilyAed: [95_000, 155_000],
+  rentSingleAed: [60_000, 90_000], // estimate: no verified 1-bed range, below Al Reem 2-bed listings
+  schoolAed: [30_000, 80_000],
+  costSources: ["bayut-reem", "pf-reem-2br", "numbeo-abudhabi", "yalla-adek-outstanding", "doh-law-23"],
 };
 
 export const HOME_BASES: HomeBase[] = [
@@ -62,47 +84,47 @@ export const HOME_BASES: HomeBase[] = [
     name: "India",
     match: /india|bangalore|bengaluru|mumbai|delhi|hyderabad|pune|chennai|gurgaon|gurugram|noida/i,
     cells: {
-      corporateTax: { text: "About 25% (22% + surcharge + cess)", sources: ["in-ct"] },
-      personalTax: { text: "Up to 30% + surcharge and cess (about 39% at the top)", sources: ["in-pit"] },
-      vat: { text: "18% GST on software services", sources: ["in-gst"] },
-      socialSecurity: { text: "Employer pays 12% of basic pay to EPF", sources: ["in-epf"] },
-      ecosystem: { text: "Deep local VC market, Bangalore's startup scene", sources: [] },
-      market: { text: "Large home market; Gulf sales from abroad", sources: [] },
-      residency: { text: "Citizens: no visas needed", sources: [] },
+      corporateTax: { text: "About 25.2% (22% + surcharge + cess)", sources: ["pwc-india-cit"] },
+      personalTax: { text: "Up to about 39% (30% top slab + surcharge + cess)", sources: ["pwc-india-pit"] },
+      vat: { text: "18% GST on software services", sources: ["pwc-india-other", "xflow-gst"] },
+      socialSecurity: { text: "Employer pays 12% of basic pay to EPF", sources: ["pwc-india-indiv-other"] },
+      ecosystem: { text: "Deep home ecosystem: 2.23 lakh+ recognised startups", sources: ["pib-startups"] },
+      market: { text: "Huge home market; Gulf sales handled from abroad", sources: ["pib-startups"] },
+      residency: { text: "Home country: no visas", sources: [] },
       longTermVisa: { text: "Not needed", sources: [] },
-      workWeek: { text: "Monday to Friday, some Saturdays", sources: [] },
-      languageLaw: { text: "English in business; Indian common law courts", sources: [] },
-      costOfLiving: { text: "Lower: a fraction of Abu Dhabi rents and fees", sources: ["in-rent"] },
+      workWeek: { text: "Tech firms mostly Monday to Friday; 48-hour cap in Karnataka", sources: ["karnataka-hours"] },
+      languageLaw: { text: "English in business; common-law courts", sources: [] },
+      costOfLiving: { text: "Lower: a 2BHK in Koramangala or HSR is about AED 16k–27k a year", sources: ["nestriqo-blr", "numbeo-bangalore"] },
     },
-    rentFamilyAed: [23_000, 41_000],
-    rentSingleAed: [12_000, 21_000],
-    schoolAed: [13_000, 43_000],
+    rentFamilyAed: [16_000, 27_500],
+    rentSingleAed: [9_000, 16_000],
+    schoolAed: [11_400, 32_400],
     socialSecurityEdge: "abu_dhabi",
     lawEdge: "even",
-    costSources: ["in-rent"],
+    costSources: ["nestriqo-blr", "numbeo-bangalore", "fx-er-api"],
   },
   {
     id: "egypt",
     name: "Egypt",
     match: /egypt|cairo|giza|alexandria/i,
     cells: {
-      corporateTax: { text: "22.5%", sources: ["eg-tax"] },
-      personalTax: { text: "Up to 27.5%", sources: ["eg-tax"] },
-      vat: { text: "14% VAT", sources: ["eg-tax"] },
-      socialSecurity: { text: "Employer pays 18.75% social insurance", sources: ["eg-tax"] },
-      ecosystem: { text: "Growing VC scene, smaller rounds", sources: [] },
-      market: { text: "Large home market; Gulf clients served from abroad", sources: [] },
-      residency: { text: "Citizens: no visas needed", sources: [] },
+      corporateTax: { text: "22.5%", sources: ["pwc-egypt-cit"] },
+      personalTax: { text: "Up to 27.5%", sources: ["pwc-egypt-pit"] },
+      vat: { text: "14% VAT", sources: ["pwc-egypt-other"] },
+      socialSecurity: { text: "Employer pays 18.75% social insurance", sources: ["pwc-egypt-indiv-other"] },
+      ecosystem: { text: "Cost-competitive talent; US$4.8bn digital exports in 2025", sources: ["itida-outlook"] },
+      market: { text: "Large home market; Gulf clients served from Cairo", sources: [] },
+      residency: { text: "Home country: no visas", sources: [] },
       longTermVisa: { text: "Not needed", sources: [] },
-      workWeek: { text: "Sunday to Thursday", sources: [] },
-      languageLaw: { text: "Arabic in law; civil-law courts", sources: [] },
-      costOfLiving: { text: "Much lower: rent and salaries cost far less", sources: ["eg-rent"] },
+      workWeek: { text: "Sunday to Thursday; Friday–Saturday weekend; 48-hour cap", sources: ["egypt-weekend", "egypt-labour-hours"] },
+      languageLaw: { text: "Arabic; civil-law courts", sources: [] },
+      costOfLiving: { text: "Much lower: central Cairo 1–2 bed is about AED 7k–25k a year", sources: ["numbeo-cairo"] },
     },
-    rentFamilyAed: [15_000, 40_000],
-    rentSingleAed: [9_000, 25_000],
-    schoolAed: [15_000, 60_000],
+    rentFamilyAed: [12_600, 33_700],
+    rentSingleAed: [6_700, 25_300],
+    schoolAed: null,
     socialSecurityEdge: "abu_dhabi",
     lawEdge: "abu_dhabi",
-    costSources: ["eg-rent"],
+    costSources: ["numbeo-cairo", "fx-er-api"],
   },
 ];

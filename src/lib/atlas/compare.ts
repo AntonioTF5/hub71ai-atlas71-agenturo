@@ -102,9 +102,10 @@ export function compareCard(state: CaseState, checks: Judgment[], meta: ChecksMe
   if (gcc) wins.push("puts you next to Gulf customers");
   if (raising) wins.push("opens Hub71 and Gulf investors");
   const life = family ? ", with residency for the whole family" : hiring ? ", with visas for the team" : "";
+  const gains = wins.join(", ").replace(/, ([^,]*)$/, " and $1");
   const verdict = home
-    ? `Abu Dhabi ${wins.join(", ").replace(/, ([^,]*)$/, " and $1")} for ${company}${life}; ${label} stays cheaper to live in.`
-    : `Abu Dhabi ${wins.join(", ").replace(/, ([^,]*)$/, " and $1")} for ${company}${life}. Atlas71 has no verified data for ${label} yet, so compare that side yourself.`;
+    ? `For ${company}, Abu Dhabi ${gains}${life}. ${label} stays cheaper to live in.`
+    : `For ${company}, Abu Dhabi ${gains}${life}. Atlas71 has no verified data for ${label} yet, so that side is left blank.`;
 
   const sourceIds = [...new Set([...rows.flatMap((r) => r.sourceIds), ...UAE.costSources, ...(home?.costSources ?? [])])];
   return { homeBase: p.homeBase ?? label, homeLabel: label, verdict, rows, firstYear, checks, checksMeta: meta, sources: sourceRefs(sourceIds) };
