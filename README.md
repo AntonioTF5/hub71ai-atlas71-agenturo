@@ -1,6 +1,6 @@
 # Atlas71: the AI agent that decides, then lands your startup in Abu Dhabi
 
-**Live demo: https://hub71-hackathon.vercel.app** (no login needed; public sandbox)
+**Live demo: https://hub71-hackathon.vercel.app** (no login needed; public sandbox) · Repo: `hub71ai-atlas71-agenturo`
 
 Atlas71 is a chat-first agent for founders who are thinking about moving their company and family to Abu Dhabi. It starts with the question every founder actually has ("does Abu Dhabi fit us?"), answers it with sourced numbers, and then does the paperwork: licence route, dated plan, one all-in price, consent-gated filings, passports, bank file, visas.
 
