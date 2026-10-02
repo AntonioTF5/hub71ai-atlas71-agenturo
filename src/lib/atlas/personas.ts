@@ -19,7 +19,7 @@ export const PERSONAS: Persona[] = [
     founder: "Meera Iyer, CEO",
     opener:
       "Hi, I'm Meera Iyer, CEO of Routely (routely.io). We sell route-planning software to delivery fleets: a web app for dispatchers and a mobile app for drivers, on monthly subscriptions, to logistics companies in India and the Gulf. " +
-      "We're a seed-stage Delaware C-corp, Routely Inc., with the team in Bangalore, and we've raised $600k. " +
+      "We're a seed-stage startup based in Bangalore, and we've raised $600k. " +
       "I'm moving to Abu Dhabi with my husband Rohan and our daughter Anya, who's 6. My co-founder Arjun Rao is our CTO. " +
       "We expect around $40k a month in customer payments, from the UAE, Saudi Arabia and India.",
   },

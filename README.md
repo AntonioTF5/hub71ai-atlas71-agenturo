@@ -8,11 +8,11 @@ Live: **https://hub71-hackathon.vercel.app** (a public sandbox: integrations, fi
 
 1. **Routely** (B2B SaaS, Bangalore, moving with family). Click the persona card. Atlas71 checks the facts against Meera's words with TypeSafe and asks whether Arjun is moving: **Just me for now**.
 2. **Decide.** The *Abu Dhabi vs Bangalore* card compares taxes, opportunities, residency, work and first-year costs, with live TypeSafe judgments on what matters. Then comes the Hub71 letter question: **No**.
-3. **Route.** A live TypeSafe batch (about 150 ms) recommends the ADGM Tech Startup Licence. Prerequisites: the Hub71 letter (Atlas71 files it), a dedicated desk, and an ownership review for the Delaware parent.
+3. **Route.** A live TypeSafe batch (about 150 ms) recommends the ADGM Tech Startup Licence. Prerequisites: the Hub71 letter (Atlas71 files it), and a dedicated desk.
 4. **Show my plan**, then **What will it cost?**: one total, **AED 40,075**, itemised. Press **Confirm & pay** (simulated).
 5. **+2 weeks** in the tracker: desk signed, Hub71 letter issued, ADGM incorporation filed automatically.
 6. **+2 weeks** again: licence issued, establishment card, tax registration with its deadline, and the entry permit. Atlas71 asks for a medical slot (tap one) and drafts the bank file. TypeSafe flags *source of funds* and *ownership*. Reply:
-   > $600k from 8 angels via SAFEs into Routely Inc.; Routely Inc. owns 100% of the ADGM company; I hold 55%, Arjun 45%.
+   > $600k from 8 angel investors through convertible notes in Routely, our DPIIT-recognised Bangalore company. Routely will own 100% of the ADGM company; Arjun and I own Routely 55% and 45%.
 
    The re-check passes: "Prepared for bank review".
 7. **+2 weeks**: resident, banked, payments live. **Export pack** downloads the Markdown pack and the JSON case.
