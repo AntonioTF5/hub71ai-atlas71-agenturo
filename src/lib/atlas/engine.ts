@@ -643,12 +643,16 @@ function stepNote(state: CaseState, route: RouteId, inst: StepInstance, status: 
         : state.inputs[`medical:${inst.subjectId}`]
           ? `Slot: ${state.inputs[`medical:${inst.subjectId}`]}`
           : undefined;
-    case "dependant_visa":
+    case "dependant_visa": {
+      const d = p.dependants.find((x) => x.id === inst.subjectId);
       return documentsReady(state, inst.subjectId)
         ? "Documents received."
         : state.inputs[`documents:${inst.subjectId}`] === DOCS_NOT_YET
           ? "Certificate not legalised yet; the visa files once it is."
-          : base;
+          : d
+            ? `Needs a legalised ${certificateFor(d)}. The UAE isn't in the Apostille Convention, so start early.`
+            : base;
+    }
     case "bank_file": {
       if (status === "done") return "Prepared for bank review.";
       const missing = missingFacts(state).bank.map((k) => SHORT_FACT[k] ?? k);
@@ -1230,6 +1234,8 @@ export interface PayCheck {
   done: boolean;
   /** What's on file when done; otherwise what's still needed, worded for "Waiting on you". */
   detail: string;
+  /** While not done: the same need in a few words, for the checklist on the price card. */
+  todo?: string;
   options?: string[];
 }
 
@@ -1247,11 +1253,12 @@ export function payChecklist(state: CaseState): PayCheck[] {
 
   if (route === "adgm_tsl") {
     const consent = state.inputs["consent:hub71_letter"];
-    const item = (done: boolean, detail: string, options?: string[]): PayCheck => ({
+    const item = (done: boolean, detail: string, options?: string[], todo?: string): PayCheck => ({
       key: "consent:hub71_letter",
       label: "Hub71 letter",
       done,
       detail,
+      ...(todo ? { todo } : {}),
       ...(options ? { options } : {}),
     });
     out.push(
@@ -1262,11 +1269,13 @@ export function payChecklist(state: CaseState): PayCheck[] {
           : consent === "yes"
             ? item(true, "You asked Atlas71 to apply")
             : consent === "no"
-              ? item(false, "The startup licence needs the Hub71 letter: approve the application, or switch to the standard ADGM licence", [
-                  "Yes, apply for me",
-                  "Switch to the standard licence",
-                ])
-              : item(false, "Approve the Hub71 eligibility letter application", CONSENT_OPTIONS),
+              ? item(
+                  false,
+                  "The startup licence needs the Hub71 letter: approve the application, or switch to the standard ADGM licence",
+                  ["Yes, apply for me", "Switch to the standard licence"],
+                  "Your OK to apply, or switch to the standard licence",
+                )
+              : item(false, "Approve the Hub71 eligibility letter application", CONSENT_OPTIONS, "Your OK to apply"),
     );
   }
 
@@ -1279,9 +1288,22 @@ export function payChecklist(state: CaseState): PayCheck[] {
     });
     out.push(
       missing.length
-        ? { key: "identity", label: "Passports", done: false, detail: `Passport details for ${joinAnd(missing.map((x) => x.who))}`, options: IDENTITY_OPTIONS }
+        ? {
+            key: "identity",
+            label: "Passports",
+            done: false,
+            detail: `Passport details for ${joinAnd(missing.map((x) => x.who))}`,
+            todo: `Needed for ${joinAnd(missing.map((x) => x.who))}`,
+            options: IDENTITY_OPTIONS,
+          }
         : renew.length
-          ? { key: "identity", label: "Passports", done: false, detail: `A renewed passport for ${joinAnd(renew.map((x) => x.who))}: the one on file expires too soon` }
+          ? {
+              key: "identity",
+              label: "Passports",
+              done: false,
+              detail: `A renewed passport for ${joinAnd(renew.map((x) => x.who))}: the one on file expires too soon`,
+              todo: `Renewed passport for ${joinAnd(renew.map((x) => x.who))}`,
+            }
           : { key: "identity", label: "Passports", done: true, detail: `On file for ${joinAnd(subjects.map((x) => x.who))}` },
     );
   }
@@ -1299,6 +1321,7 @@ export function payChecklist(state: CaseState): PayCheck[] {
             label,
             done: false,
             detail: `When does ${sig.name} first land in the UAE? ADGM needs one entry before incorporation`,
+            todo: "The day you land; ADGM needs it before incorporation",
             options: entryOptions(state),
           },
     );
@@ -1316,6 +1339,7 @@ export function payChecklist(state: CaseState): PayCheck[] {
             label: "Family certificates",
             done: false,
             detail: `${open.length > 1 ? "Are" : "Is"} ${certs} legalised for the UAE? Dependant visas need ${open.length > 1 ? "them" : "it"}`,
+            todo: `Legalised yet? ${joinAnd(open.map((d) => `${d.name ? `${d.name}'s` : "the"} ${certificateFor(d)}`))}`,
             options: [open.length > 1 ? "They're legalised and ready" : "It's legalised and ready", "Not yet"],
           }
         : {
@@ -1339,6 +1363,10 @@ export function payChecklist(state: CaseState): PayCheck[] {
           label: "Bank file facts",
           done: false,
           detail: `For the bank file: ${joinAnd(bank.map((k) => SHORT_FACT[k] ?? k))}`,
+          todo: (() => {
+            const t = joinAnd(bank.map((k) => SHORT_FACT[k] ?? k));
+            return t.charAt(0).toUpperCase() + t.slice(1);
+          })(),
           ...(docs ? { options: [INVESTOR_DOCS_OPTION, "I'll attach documents"] } : {}),
         }
       : { key: "bank", label: "Bank file facts", done: true, detail: "Source of funds, ownership, volume and countries confirmed" },

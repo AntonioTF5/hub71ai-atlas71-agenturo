@@ -29,7 +29,7 @@ function clamp01(p: unknown): number {
 /** For "what matters to this founder" questions: a plain answer, never a pass or a fail. */
 function AnswerChip({ p }: { p: number }) {
   const label = p >= 0.65 ? "Yes" : p <= 0.35 ? "No" : "Unsure";
-  return <Pill tone="neutral" className="min-w-[3.25rem] justify-center text-ink">{label}</Pill>;
+  return <Pill tone="neutral" className="w-full justify-center text-ink">{label}</Pill>;
 }
 
 export function CheckList({ checks, mode = "verdict" }: { checks: Judgment[]; mode?: "verdict" | "answer" }) {
@@ -59,7 +59,10 @@ export function CheckList({ checks, mode = "verdict" }: { checks: Judgment[]; mo
               </div>
               <span className="w-9 text-right text-[13px] font-medium tabular-nums text-muted">{pct}%</span>
             </div>
-            {mode === "answer" ? <AnswerChip p={clamp01(c.p)} /> : <VerdictChip verdict={c.verdict} />}
+            {/* A fixed slot, so "Unsure" or "Review" never pushes its bar out of line with the others. */}
+            <div className={cx("flex shrink-0 justify-end", mode === "answer" ? "w-[4.25rem]" : "w-[5.25rem]")}>
+              {mode === "answer" ? <AnswerChip p={clamp01(c.p)} /> : <VerdictChip verdict={c.verdict} />}
+            </div>
           </li>
         );
       })}

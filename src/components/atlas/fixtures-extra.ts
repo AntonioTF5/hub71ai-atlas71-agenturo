@@ -1,10 +1,11 @@
 // Extra gallery fixtures (dev only): the passport details card, all valid and with a warning, and the
 // pre-payment states (details still being collected, and the final review with Confirm & pay unlocked).
-import type { CaseState, DocumentsCardData, IdentityCardData, PriceCardData } from "@/lib/atlas/types";
+import type { CaseState, CompareCardData, DocumentsCardData, IdentityCardData, PriceCardData } from "@/lib/atlas/types";
+import { compareCard } from "@/lib/atlas/compare";
 import { documentsCard, provideInput, quote, sandboxIdentities, saveIdentities } from "@/lib/atlas/engine";
 import { applyProfile } from "@/lib/atlas/profile";
 import { SANDBOX_INVESTOR_DOCS } from "@/lib/atlas/personas";
-import { stateUnpaid } from "./fixtures";
+import { stateFacts, stateUnpaid } from "./fixtures";
 
 const USED_FOR = [
   "ADGM Registration Authority: shareholders and directors",
@@ -113,3 +114,15 @@ export const priceCardLive: PriceCardData = quote(stateUnpaid)!;
 
 /** Meera's uploaded investor documents, as the card shows them. */
 export const documentsCardRoutely: DocumentsCardData = documentsCard(SANDBOX_INVESTOR_DOCS.routely!);
+
+/** Abu Dhabi vs Bangalore for Routely, built by the real engine with the judgments from a live demo run. */
+export const compareCardLive: CompareCardData = compareCard(
+  stateFacts,
+  [
+    { key: "gcc_customers", label: "Sells to Gulf (GCC) customers", p: 0.98, verdict: "pass" },
+    { key: "raising_capital", label: "Likely to raise venture capital", p: 0.52, verdict: "review" },
+    { key: "hiring_abroad", label: "Brings staff from abroad", p: 0.14, verdict: "flag" },
+    { key: "cost_sensitive", label: "Costs weigh heavily", p: 0.83, verdict: "pass" },
+  ],
+  { live: true, latencyMs: 129 },
+);
