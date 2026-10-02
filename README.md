@@ -100,6 +100,10 @@ npm run dev
 
 Environment (`.env.example`): `OPENROUTER_API_KEY` (OpenAI models through OpenRouter), `TYPESAFE_API_KEY`, `TAVILY_API_KEY`, optional `BLOB_READ_WRITE_TOKEN` for 20 MB uploads and `ATLAS_AGENT_MODEL` (default `openai/gpt-6.1-sol`). `GET /api/health` verifies the provider keys without exposing them, and `GET /api/version` shows the deployed commit.
 
+## Developer, owner and license
+
+Developed and owned by **Anton Agafonov**. Released under the [Apache License 2.0](LICENSE); see [NOTICE](NOTICE).
+
 ## Code map
 
 - `src/lib/atlas/engine.ts`: the deterministic engine (route rules, dated plan, one price, filing simulator, consent and identity gating).

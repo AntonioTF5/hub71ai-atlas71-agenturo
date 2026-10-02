@@ -1,6 +1,9 @@
 {
   "name": "hub71",
   "version": "0.1.0",
+  "description": "Atlas71: an AI agent that decides, then lands founders in Abu Dhabi",
+  "author": "Anton Agafonov",
+  "license": "Apache-2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
